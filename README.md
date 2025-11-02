@@ -4,6 +4,38 @@
 
 ---
 
+## 🧠 Project Overview
+
+TaskFlow is designed to support collaborative project and task management through a set of specialized microservices. Each service handles a distinct domain and communicates via REST and asynchronous messaging (SNS/SQS via LocalStack). Here's how the full system is intended to work:
+
+### 🔐 `auth-service`
+Handles user authentication and authorization using JWT.  
+Includes rate limiting via Redis to prevent abuse and brute-force attempts.
+
+### 👤 `user-service`
+Manages user profiles, preferences, and account settings.  
+Integrates with `auth-service` to secure endpoints and enforce access control.
+
+### 📁 `project-service`
+Allows users to create and manage projects, assign team members, and define roles.  
+Supports permission-based access to project resources.
+
+### 🧾 `task-service`
+Provides task creation, assignment, status updates, and time tracking.  
+Tasks are linked to projects and users, with support for deadlines and priorities.
+
+### 🔔 `notification-service`
+Handles asynchronous event delivery using SNS/SQS.  
+Sends real-time notifications for task updates, project changes, and user mentions.
+
+### 🌐 `gateway-service`
+Acts as the unified entry point for all services.  
+Handles routing, global rate limiting, and JWT validation to secure traffic.
+
+Together, these services form a cohesive system for managing teams, projects, and tasks with real-time feedback and secure access.
+
+---
+
 ## 🏗️ Architecture & Tech Stack
 
 **Language:** Java 23  
@@ -13,15 +45,6 @@
 **Database:** PostgreSQL 15  
 **Build Tool:** Maven  
 **Containerization:** Docker & Docker Compose  
-
----
-
-## 🧩 Project Modules
-
-Each module is fully containerized and represents a distinct business domain:
-
-- 🔐 **auth-service** — Manages user registration, login, and JWT token issuance (Port: `8081`)  
-- 🌐 **gateway-service** — Public entry point. Handles routing, throttling, and JWT validation (Port: `8080`)  
 
 ---
 
@@ -99,14 +122,20 @@ docker logs auth-service
 
 ---
 
-## 💡 Future Roadmap
+## 📋 To-Do Checklist
 
-Planned modules include:
+Track your progress as you build out the system:
 
-- 👤 `user-service` — User profiles and settings  
-- 📁 `project-service` — Projects, teams, and permissions  
-- 🧾 `task-service` — Task tracking and time logging  
-- 🔔 `notification-service` — Event-based messaging and updates  
+- [x] `auth-service` — JWT authentication and Redis rate limiting  
+- [x] `gateway-service` — API gateway and request routing
+- [x] Containerization — Docker setup for all services  
+- [ ] `user-service` — User profile management  
+- [ ] `project-service` — Project and team features  
+- [ ] `task-service` — Task tracking and assignment  
+- [ ] `notification-service` — Event-driven messaging via SNS/SQS  
+- [ ] CI/CD pipeline — Automated builds and deployments  
+- [ ] LocalStack integration — AWS emulation for development  
+- [ ] Monitoring & Logging — Centralized logs and metrics  
 
 ---
 
