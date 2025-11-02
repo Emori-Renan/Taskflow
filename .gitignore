@@ -1,0 +1,42 @@
+# ----------------------------------------
+# 1. Build Artifacts (Critical Exclusion)
+# ----------------------------------------
+
+# The entire 'target' directory must be ignored.
+# It contains all compiled classes, the final JAR/WAR, reports, etc.
+/target/
+
+# ----------------------------------------
+# 2. IDE and Editor Exclusions
+# ----------------------------------------
+
+### Visual Studio Code (VS Code) ###
+# Ignore the VS Code settings and launch files
+/.vscode/
+
+### Other Common IDEs (Keep these for collaboration) ###
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# ----------------------------------------
+# 3. Java Specific Exclusions
+# ----------------------------------------
+*.class
+*.jar
+*.war
+*.ear
+
+# Virtual machine crash logs, if any
+hs_err_pid*
+
+# ----------------------------------------
+# 4. Operating System Exclusions
+# ----------------------------------------
+.DS_Store # macOS
+Thumbs.db # Windows
