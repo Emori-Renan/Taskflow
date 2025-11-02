@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copy this file to %USERPROFILE%\\.m2\\toolchains.xml and edit the <jdkHome> to your installed JDK 21 path -->
+<toolchains xmlns="http://maven.apache.org/TOOLCHAINS/1.1.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/TOOLCHAINS/1.1.0
+                                http://maven.apache.org/xsd/toolchains-1.1.0.xsd">
+  <toolchain>
+    <type>jdk</type>
+    <provides>
+      <version>21</version>
+      <vendor>eclipse</vendor>
+    </provides>
+    <configuration>
+      <jdkHome>C:\\Program Files\\Eclipse Adoptium\\jdk-21</jdkHome>
+    </configuration>
+  </toolchain>
+</toolchains>
