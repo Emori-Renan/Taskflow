@@ -1,12 +1,12 @@
 # 🚀 TaskFlow — Modular Microservices Backend
 
-**TaskFlow** is a scalable, modular backend system for project and task management, built with **Spring Boot 3.5** and **Java 23**. It follows a hybrid **modular monolith/microservice** architecture, emphasizing **Hexagonal Architecture (Ports & Adapters)** and **Domain-Driven Design (DDD)** to ensure loose coupling, high testability, and a clear path for future microservice decomposition.
+**TaskFlow** is a scalable, modular backend system for **Trello-like project and task management**, built with **Spring Boot 3.5** and **Java 23**. It follows a hybrid **modular monolith/microservice** architecture, emphasizing **Hexagonal Architecture (Ports & Adapters)** and **Domain-Driven Design (DDD)** to ensure loose coupling, high testability, and a clear path for future microservice decomposition.
 
 ---
 
 ## 🧠 Project Overview
 
-TaskFlow is designed to support collaborative project and task management through a set of specialized microservices. Each service handles a distinct domain and communicates via REST and asynchronous messaging (SNS/SQS via LocalStack). Here's how the full system is intended to work:
+TaskFlow is designed to support collaborative project and task management, inspired by tools like **Trello**. It enables users to organize work into boards, lists, and cards through a set of specialized microservices. Each service handles a distinct domain and communicates via REST and asynchronous messaging (SNS/SQS via LocalStack). Here's how the full system is intended to work:
 
 ### 🔐 `auth-service`
 Handles user authentication and authorization using JWT.  
@@ -17,22 +17,22 @@ Manages user profiles, preferences, and account settings.
 Integrates with `auth-service` to secure endpoints and enforce access control.
 
 ### 📁 `project-service`
-Allows users to create and manage projects, assign team members, and define roles.  
-Supports permission-based access to project resources.
+Acts as the **board engine**, allowing users to create and manage boards (projects), define columns (lists), and assign team members.  
+Supports permission-based access, role management, and board-level collaboration.
 
 ### 🧾 `task-service`
-Provides task creation, assignment, status updates, and time tracking.  
-Tasks are linked to projects and users, with support for deadlines and priorities.
+Functions as the **card engine**, managing tasks that live inside project columns.  
+Supports task creation, assignment, movement between columns, due dates, labels, and time tracking.
 
 ### 🔔 `notification-service`
 Handles asynchronous event delivery using SNS/SQS.  
-Sends real-time notifications for task updates, project changes, and user mentions.
+Sends real-time notifications for task updates, board changes, and user mentions.
 
 ### 🌐 `gateway-service`
 Acts as the unified entry point for all services.  
 Handles routing, global rate limiting, and JWT validation to secure traffic.
 
-Together, these services form a cohesive system for managing teams, projects, and tasks with real-time feedback and secure access.
+Together, these services form a cohesive system for managing teams, boards, and tasks with real-time feedback and secure access—just like a modular, backend-powered Trello.
 
 ---
 
@@ -127,11 +127,11 @@ docker logs auth-service
 Track your progress as you build out the system:
 
 - [x] `auth-service` — JWT authentication and Redis rate limiting  
-- [x] `gateway-service` — API gateway and request routing
+- [x] `gateway-service` — API gateway and request routing  
 - [x] Containerization — Docker setup for all services  
 - [ ] `user-service` — User profile management  
-- [ ] `project-service` — Project and team features  
-- [ ] `task-service` — Task tracking and assignment  
+- [ ] `project-service` — Board and column management (Trello-style)  
+- [ ] `task-service` — Task/card tracking and movement  
 - [ ] `notification-service` — Event-driven messaging via SNS/SQS  
 - [ ] CI/CD pipeline — Automated builds and deployments  
 - [ ] LocalStack integration — AWS emulation for development  
