@@ -1,0 +1,5 @@
+com\taskflow\gateway\config\GatewayConfig.class
+com\taskflow\gateway\GatewayServiceApplication.class
+com\taskflow\gateway\config\JwtAuthFilter.class
+com\taskflow\gateway\config\RedisConfig.class
+com\taskflow\gateway\util\JwtUtil.class

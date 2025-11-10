@@ -7,7 +7,10 @@ D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\application\
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\AuthServiceApplication.java
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\domain\model\User.java
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\adapter\in\web\AuthController.java
+D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\adapter\out\db\entity\UserEntity.java
+D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\adapter\out\db\repository\SpringDataUserRepository.java
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\adapter\out\db\UserRepositoryAdapter.java
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\adapter\out\jwt\JwtProviderAdapter.java
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\adapter\out\redis\RateLimiterAdapter.java
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\config\BeanConfig.java
+D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\config\OpenApiConfig.java

@@ -1,0 +1,5 @@
+D:\prog\proj1\TaskFlow\gateway-service\src\main\java\com\taskflow\gateway\config\GatewayConfig.java
+D:\prog\proj1\TaskFlow\gateway-service\src\main\java\com\taskflow\gateway\config\JwtAuthFilter.java
+D:\prog\proj1\TaskFlow\gateway-service\src\main\java\com\taskflow\gateway\config\RedisConfig.java
+D:\prog\proj1\TaskFlow\gateway-service\src\main\java\com\taskflow\gateway\GatewayServiceApplication.java
+D:\prog\proj1\TaskFlow\gateway-service\src\main\java\com\taskflow\gateway\util\JwtUtil.java

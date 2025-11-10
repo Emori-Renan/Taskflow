@@ -3,13 +3,16 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://postgres:5432/taskflow
-    username: admin
-    password: admin
+    url: jdbc:postgresql://postgres:5432/authdb
+    username: taskflow
+    password: taskflow   
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: false
+    show-sql: true
+  sql:
+    init: 
+      mode: never
   application:
     name: auth-service
   data:

@@ -7,8 +7,9 @@ services:
       POSTGRES_USER: taskflow
       POSTGRES_PASSWORD: taskflow
       POSTGRES_DB: authdb
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -20,11 +21,12 @@ services:
       dockerfile: auth-service/Dockerfile
     container_name: auth-service
     ports:
-      - "8081:8081"
+      - "8081:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/authdb
       - SPRING_DATASOURCE_USERNAME=taskflow
       - SPRING_DATASOURCE_PASSWORD=taskflow
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
     depends_on:
       - postgres
     networks:
