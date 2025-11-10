@@ -63,7 +63,7 @@ Each service follows the **Hexagonal Architecture** pattern:
 ### 1. Clone the Repository
 
 ```bash
-git clone <YOUR_REPO_URL>
+git clone https://github.com/Emori-Renan/Taskflow
 cd TaskFlow
 ```
 
