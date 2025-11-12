@@ -14,3 +14,4 @@ D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructu
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\adapter\out\redis\RateLimiterAdapter.java
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\config\BeanConfig.java
 D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\config\OpenApiConfig.java
+D:\prog\proj1\TaskFlow\auth-service\src\main\java\com\taskflow\auth\infrastructure\config\SecurityConfig.java
