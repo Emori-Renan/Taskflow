@@ -1,22 +1,21 @@
 package com.taskflow.auth.application.service;
 
-import com.taskflow.auth.application.dto.AuthRequestDTO;
-import com.taskflow.auth.application.dto.AuthResponseDTO;
-import com.taskflow.auth.application.port.in.AuthUseCase;
-import com.taskflow.auth.application.port.out.TokenProviderPort;
-import com.taskflow.auth.application.port.out.UserRepositoryPort;
-import com.taskflow.auth.domain.model.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-@Service
-public class AuthService implements AuthUseCase {
+import com.taskflow.auth.application.dto.AuthRequestDTO;
+import com.taskflow.auth.application.dto.AuthResponseDTO;
+import com.taskflow.auth.application.port.in.LoginUseCase;
+import com.taskflow.auth.application.port.out.TokenProviderPort;
+import com.taskflow.auth.application.port.out.UserRepositoryPort;
 
+@Service
+public class LoginService implements LoginUseCase {
     private final UserRepositoryPort userRepository;
     private final TokenProviderPort tokenProvider;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepositoryPort userRepository,
+    public LoginService(UserRepositoryPort userRepository,
                        TokenProviderPort tokenProvider,
                        PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
@@ -35,22 +34,5 @@ public class AuthService implements AuthUseCase {
 
         var token = tokenProvider.generateToken(user);
         return new AuthResponseDTO(token, user.username(), user.role());
-    }
-
-    @Override
-    public AuthResponseDTO register(AuthRequestDTO request) {
-        if (userRepository.findByUsername(request.username()).isPresent()) {
-            throw new IllegalArgumentException("User already exists");
-        }
-
-        var newUser = new User(
-            request.username(), 
-            request.password(), 
-            "USER" 
-        );
-
-        var savedUser = userRepository.save(newUser);
-        var token = tokenProvider.generateToken(savedUser);
-        return new AuthResponseDTO(token, savedUser.username(), savedUser.role());
     }
 }

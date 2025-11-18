@@ -39,7 +39,7 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
     
     private UserEntity toPersistenceEntity(User user) {
-        String hashedPassword = passwordEncoder.encode(user.password()); // <--- CRITICAL CHANGE
+        String hashedPassword = passwordEncoder.encode(user.password());
         return new UserEntity(user.username(), hashedPassword, user.role());
     }
 
