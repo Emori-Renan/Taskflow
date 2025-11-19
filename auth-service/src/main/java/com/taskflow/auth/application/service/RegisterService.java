@@ -7,6 +7,8 @@ import com.taskflow.auth.application.dto.AuthResponseDTO;
 import com.taskflow.auth.application.port.in.RegisterUseCase;
 import com.taskflow.auth.application.port.out.TokenProviderPort;
 import com.taskflow.auth.application.port.out.UserRepositoryPort;
+import com.taskflow.auth.domain.exception.InvalidInputException;
+import com.taskflow.auth.domain.exception.UserAlreadyExistsException;
 import com.taskflow.auth.domain.model.User;
 
 @Service
@@ -23,8 +25,15 @@ public class RegisterService implements RegisterUseCase {
 
     @Override
     public AuthResponseDTO register(AuthRequestDTO request) {
+        if (request.username() == null || request.username().trim().isEmpty()) {
+            throw new InvalidInputException("Username cannot be empty.");
+        }
+        if (request.password() == null || request.password().trim().isEmpty()) {
+            throw new InvalidInputException("Password cannot be empty.");
+        }
+        
         if (userRepository.findByUsername(request.username()).isPresent()) {
-            throw new IllegalArgumentException("User already exists");
+            throw new UserAlreadyExistsException(request.username());
         }
 
         var newUser = new User(

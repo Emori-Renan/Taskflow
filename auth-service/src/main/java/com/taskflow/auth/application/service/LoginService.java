@@ -8,6 +8,8 @@ import com.taskflow.auth.application.dto.AuthResponseDTO;
 import com.taskflow.auth.application.port.in.LoginUseCase;
 import com.taskflow.auth.application.port.out.TokenProviderPort;
 import com.taskflow.auth.application.port.out.UserRepositoryPort;
+import com.taskflow.auth.domain.exception.InvalidCredentialsException;
+import com.taskflow.auth.domain.exception.UserNotFoundException;
 
 @Service
 public class LoginService implements LoginUseCase {
@@ -16,8 +18,8 @@ public class LoginService implements LoginUseCase {
     private final PasswordEncoder passwordEncoder;
 
     public LoginService(UserRepositoryPort userRepository,
-                       TokenProviderPort tokenProvider,
-                       PasswordEncoder passwordEncoder) {
+            TokenProviderPort tokenProvider,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
         this.passwordEncoder = passwordEncoder;
@@ -25,14 +27,14 @@ public class LoginService implements LoginUseCase {
 
     @Override
     public AuthResponseDTO login(AuthRequestDTO request) {
-        var user = userRepository.findByUsername(request.username())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+            var user = userRepository.findByUsername(request.username())
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (!passwordEncoder.matches(request.password(), user.password())) {
-            throw new IllegalArgumentException("Invalid credentials");
-        }
+            if (!passwordEncoder.matches(request.password(), user.password())) {
+                throw new InvalidCredentialsException();
+            }
 
-        var token = tokenProvider.generateToken(user);
-        return new AuthResponseDTO(token, user.username(), user.role());
+            var token = tokenProvider.generateToken(user);
+            return new AuthResponseDTO(token, user.username(), user.role());
     }
 }
