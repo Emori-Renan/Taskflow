@@ -13,7 +13,7 @@ COPY gateway-service /app/gateway-service
 
 
 # Build only auth-service
-RUN mvn clean package -pl auth-service -am -DskipTests
+RUN mvn clean package -pl auth-service -am
 
 # Stage 2: Run with JRE 23
 FROM eclipse-temurin:23-jre-alpine
