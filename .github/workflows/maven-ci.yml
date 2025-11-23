@@ -42,9 +42,10 @@ jobs:
           if [ ${#changed_services[@]} -eq 0 ]; then
             echo "json=[]" >> $GITHUB_OUTPUT
           else
-            json=$(printf '%s\n' "${changed_services[@]}" | jq -R . | jq -s .)
-            echo "json=$json" >> $GITHUB_OUTPUT
+            json=$(printf '%s\n' "${changed_services[@]}" | jq -R . | jq -cs .)
+            echo "json=${json}" >> $GITHUB_OUTPUT
           fi
+
 
 
   build_and_push:
