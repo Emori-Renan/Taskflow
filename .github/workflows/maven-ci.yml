@@ -5,13 +5,14 @@ on:
     branches:
       - main
     paths:
-      - '**' # detect any change
+      - '**' # Detect any change to trigger the filtering job
 
 jobs:
   detect_changed_services:
     runs-on: ubuntu-latest
 
     outputs:
+      # Map the output of the filtering step to a job output
       services: ${{ steps.filter.outputs.changed }}
 
     steps:
@@ -22,19 +23,28 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          # Define the paths for each service to watch
           filters: |
             auth-service:
               - 'auth-service/**'
+            employee-service:
+              - 'employee-service/**'
+            user-service:
+              - 'user-service/**'
 
   build_and_push:
+    # Set the dependency on the detection job
     needs: detect_changed_services
     runs-on: ubuntu-latest
 
+    # Conditional Check: Only run if the output is NOT the empty JSON array '[]'.
     if: ${{ needs.detect_changed_services.outputs.services != '[]' }}
 
     strategy:
       matrix:
-        service: ${{ fromJson(needs.detect_changed_services.outputs.services) }}
+        # CRITICAL FIX: Replaced unsupported 'coalesce' with a standard logical expression.
+        # This ensures 'fromJson' always receives a valid JSON string (either the services list or '[]').
+        service: ${{ fromJson(needs.detect_changed_services.outputs.services != '' && needs.detect_changed_services.outputs.services || '[]') }}
 
     steps:
       - name: Checkout code
@@ -47,7 +57,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build JAR
+      - name: Build JAR (in ${{ matrix.service }})
         run: mvn -B -Dspring.profiles.active=test clean install
         working-directory: ./${{ matrix.service }}
 
@@ -60,7 +70,7 @@ jobs:
       - name: Generate Version Tag
         run: echo "VERSION=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
 
-      - name: Build Docker Image
+      - name: Build Docker Image (for ${{ matrix.service }})
         working-directory: ./${{ matrix.service }}
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ env.VERSION }} .

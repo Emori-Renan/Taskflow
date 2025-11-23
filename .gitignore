@@ -40,3 +40,7 @@ hs_err_pid*
 # ----------------------------------------
 .DS_Store # macOS
 Thumbs.db # Windows
+auth-service/target/classes/application-dev.yml
+auth-service/target/classes/application.yml
+auth-service/target/classes/schema.sql
+auth-service/target/test-classes/application-test.yml
