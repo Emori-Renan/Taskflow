@@ -13,7 +13,7 @@ jobs:
 
     outputs:
       # Map the output of the filtering step to a job output
-      services: ${{ steps.filter.outputs.changed }}
+      services: ${{ steps.jsonify.outputs.json }}
 
     steps:
       - name: Checkout code
@@ -29,8 +29,19 @@ jobs:
               - 'auth-service/**'
             employee-service:
               - 'employee-service/**'
-            user-service:
-              - 'user-service/**'
+
+      - name: Convert dorny output to JSON array
+        id: jsonify
+        run: |
+          CHANGED="${{ steps.filter.outputs.changed }}"
+          # If empty, output empty JSON list
+          if [ -z "$CHANGED" ]; then
+            echo "json=[]" >> $GITHUB_OUTPUT
+          else
+            # Split space-separated services into JSON list
+            JSON=$(printf '%s\n' $CHANGED | jq -R . | jq -s .)
+            echo "json=$JSON" >> $GITHUB_OUTPUT
+          fi
 
   build_and_push:
     # Set the dependency on the detection job
@@ -42,10 +53,8 @@ jobs:
 
     strategy:
       matrix:
-        # Final CRITICAL FIX: The robust expression to prevent the 'empty input' error.
-        # It defaults to '[]' if the output is an empty string, allowing the job to skip cleanly.
-        service: ${{ fromJson(needs.detect_changed_services.outputs.services != '' && needs.detect_changed_services.outputs.services || '[]') }}
-
+        service: ${{ fromJson(needs.detect_changed_services.outputs.services) }}
+        
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
