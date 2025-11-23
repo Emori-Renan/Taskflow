@@ -140,6 +140,17 @@ Track your progress as you build out the system:
 
 ---
 
+---
+
+## 🗺️ Project Resources
+
+- 📌 **[Jira Board – TaskFlow Planning](https://renanemori.atlassian.net/jira/software/projects/TAS/boards/35)**  
+  Track issues, sprints, and development progress.
+
+- 🧩 **[System Architecture Diagram (draw.io)](https://app.diagrams.net/?src=about)**  
+  Visual overview of service interactions and system design.
+
+
 ## 👨‍💻 Author
 
 **Renan Emori**  
