@@ -25,14 +25,12 @@ jobs:
           filters: |
             auth-service:
               - 'auth-service/**'
-            employee-service:
-              - 'employee-service/**'
 
   build_and_push:
     needs: detect_changed_services
     runs-on: ubuntu-latest
 
-    if: ${{ needs.detect_changed_services.outputs.services != '' }}
+    if: ${{ needs.detect_changed_services.outputs.services != '[]' }}
 
     strategy:
       matrix:
