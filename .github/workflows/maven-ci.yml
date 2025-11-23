@@ -86,11 +86,13 @@ jobs:
         run: echo "VERSION=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_ENV
 
       - name: Build Docker Image (${{ matrix.service }})
-        working-directory: ./${{ matrix.service }}
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ env.VERSION }} .
-          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ env.VERSION }} \
-                     ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+          docker build \
+            -f ./${{ matrix.service }}/Dockerfile \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ env.VERSION }} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+            .
+
 
       - name: Push Docker Images
         run: |
