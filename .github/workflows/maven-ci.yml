@@ -31,16 +31,21 @@ jobs:
       - name: Convert changed list to JSON array
         id: jsonify
         run: |
-          list="${{ steps.filter.outputs.changed }}"
-          echo "Raw changed=[$list]"
-
-          if [ -z "$list" ]; then
-            echo "json=[]" >> $GITHUB_OUTPUT
-            exit 0
+          changed_services=()
+          if [[ "${{ steps.filter.outputs.auth-service }}" == 'true' ]]; then
+            changed_services+=("auth-service")
+          fi
+          if [[ "${{ steps.filter.outputs.employee-service }}" == 'true' ]]; then
+            changed_services+=("employee-service")
           fi
 
-          json=$(printf "%s" "$list" | jq -R 'split(",")')
-          echo "json=$json" >> $GITHUB_OUTPUT
+          if [ ${#changed_services[@]} -eq 0 ]; then
+            echo "json=[]" >> $GITHUB_OUTPUT
+          else
+            json=$(printf '%s\n' "${changed_services[@]}" | jq -R . | jq -s .)
+            echo "json=$json" >> $GITHUB_OUTPUT
+          fi
+
 
   build_and_push:
     needs: detect_changed_services
