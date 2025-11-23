@@ -37,13 +37,13 @@ jobs:
     needs: detect_changed_services
     runs-on: ubuntu-latest
 
-    # Conditional Check: Only run if the output is NOT the empty JSON array '[]'.
-    if: ${{ needs.detect_changed_services.outputs.services != '[]' }}
+    # NOTE: The explicit 'if' condition is removed.
+    # The job will now skip automatically if the matrix evaluation results in an empty list.
 
     strategy:
       matrix:
-        # CRITICAL FIX: Replaced unsupported 'coalesce' with a standard logical expression.
-        # This ensures 'fromJson' always receives a valid JSON string (either the services list or '[]').
+        # Final CRITICAL FIX: The robust expression to prevent the 'empty input' error.
+        # It defaults to '[]' if the output is an empty string, allowing the job to skip cleanly.
         service: ${{ fromJson(needs.detect_changed_services.outputs.services != '' && needs.detect_changed_services.outputs.services || '[]') }}
 
     steps:
