@@ -133,11 +133,23 @@ Track your progress as you build out the system:
 - [ ] `project-service` — Board and column management (Trello-style)  
 - [ ] `task-service` — Task/card tracking and movement  
 - [ ] `notification-service` — Event-driven messaging via SNS/SQS  
-- [ ] CI/CD pipeline — Automated builds and deployments  
+- [x] CI/— Automated builds
+- [ ] CD pipeline/— Automated deployments
 - [ ] LocalStack integration — AWS emulation for development  
 - [ ] Monitoring & Logging — Centralized logs and metrics  
 
 ---
+
+---
+
+## 🗺️ Project Resources
+
+- 📌 **[Jira Board – TaskFlow Planning](https://renanemori.atlassian.net/jira/software/projects/TAS/boards/35)**  
+  Track issues, sprints, and development progress.
+
+- 🧩 **[System Architecture Diagram (draw.io)](https://app.diagrams.net/?src=about)**  
+  Visual overview of service interactions and system design.
+
 
 ## 👨‍💻 Author
 
