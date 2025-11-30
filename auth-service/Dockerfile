@@ -1,25 +1,37 @@
-# Stage 1: Build with JDK 23
-FROM eclipse-temurin:23-jdk-alpine AS build
+# ============================================
+# Stage 1: Dependencies Cache
+# ============================================
+FROM eclipse-temurin:23-jdk-alpine AS deps
+RUN apk update && apk add maven
 
 WORKDIR /app
 
-# Install Maven
-RUN apk update && apk add maven
+# Copy parent + service pom so Maven can resolve structure
+COPY pom.xml .
+COPY auth-service/pom.xml auth-service/pom.xml
 
-# Copy the entire TaskFlow project
-COPY pom.xml /app/pom.xml
-COPY auth-service /app/auth-service
-COPY gateway-service /app/gateway-service
+# Pre-fetch dependencies (fast rebuilds)
+RUN mvn -pl auth-service -am dependency:resolve -DskipTests
 
 
-# Build only auth-service
-RUN mvn clean package -pl auth-service -am
+# ============================================
+# Stage 2: Build
+# ============================================
+FROM deps AS build
 
-# Stage 2: Run with JRE 23
+# Now copy actual source (this invalidates cache only on changes)
+COPY auth-service/src auth-service/src
+
+RUN mvn -pl auth-service -am clean package -DskipTests
+
+
+# ============================================
+# Stage 3: Runtime
+# ============================================
 FROM eclipse-temurin:23-jre-alpine
-
+WORKDIR /app
 ENV TZ=Asia/Tokyo
 
-COPY --from=build /app/auth-service/target/*.jar auth-service.jar
+COPY --from=build /app/auth-service/target/*.jar app.jar
 
-ENTRYPOINT ["java", "-jar", "/auth-service.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
