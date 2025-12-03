@@ -47,7 +47,7 @@ public class GatewayConfig {
                 //                         .setRateLimiter(redisRateLimiter) 
                 //                 )
                 //         )
-                //         .uri("http://user-service:8082"))
+                //         .uri("http://user-service:8082")) 
                 .build();
     }
 }

@@ -10,8 +10,8 @@ spring:
       default-filters:
         - name: RequestRateLimiter
           args:
-            redis-rate-limiter.replenishRate: 5    # 5 requests per second
-            redis-rate-limiter.burstCapacity: 10   # max burst
+            redis-rate-limiter.replenishRate: 5
+            redis-rate-limiter.burstCapacity: 10
             key-resolver: "#{@ipKeyResolver}"
       routes:
         - id: auth-service
@@ -34,7 +34,12 @@ spring:
           uri: http://notification-service:8085
           predicates:
             - Path=/api/notifications/**
+
   data:
     redis:
       host: redis
       port: 6379
+
+jwt:
+  secret: your-very-secret-key-here
+  expiration: 3600000
