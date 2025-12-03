@@ -6,12 +6,11 @@ RUN apk update && apk add maven
 
 WORKDIR /app
 
-# Copy parent + service pom so Maven can resolve structure
+# Copy only the service's pom.xml to cache dependencies
 COPY pom.xml .
-COPY auth-service/pom.xml auth-service/pom.xml
 
-# Pre-fetch dependencies (fast rebuilds)
-RUN mvn -pl auth-service -am dependency:resolve -DskipTests
+# Pre-fetch dependencies (cached unless pom.xml changes)
+RUN mvn dependency:resolve -DskipTests
 
 
 # ============================================
@@ -19,10 +18,11 @@ RUN mvn -pl auth-service -am dependency:resolve -DskipTests
 # ============================================
 FROM deps AS build
 
-# Now copy actual source (this invalidates cache only on changes)
-COPY auth-service/src auth-service/src
+# Copy the actual source code
+COPY src ./src
 
-RUN mvn -pl auth-service -am clean package -DskipTests
+# Build the application
+RUN mvn -B clean package -DskipTests
 
 
 # ============================================
@@ -32,6 +32,7 @@ FROM eclipse-temurin:23-jre-alpine
 WORKDIR /app
 ENV TZ=Asia/Tokyo
 
-COPY --from=build /app/auth-service/target/*.jar app.jar
+# Copy the built JAR from the build stage
+COPY --from=build /app/target/*.jar app.jar
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -33,6 +33,8 @@ jobs:
               - '.github/workflows/**'
             auth-service:
               - 'auth-service/**'
+            gateway-service:
+              - 'gateway-service/**'
 
       - name: Determine list of services to build
         id: service_output

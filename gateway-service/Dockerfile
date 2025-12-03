@@ -1,22 +1,25 @@
+# -------- BUILD STAGE --------
 FROM maven:3.9.9-eclipse-temurin-23 AS build
-
 WORKDIR /app
 
-# Copy entire source so Maven can resolve modules
-COPY pom.xml pom.xml
-COPY gateway-service/pom.xml gateway-service/pom.xml
-COPY auth-service/pom.xml auth-service/pom.xml
+# Copy only the pom.xml first to leverage Docker layer caching
+COPY pom.xml .
 
-# Install dependencies first (cached)
-RUN mvn -pl gateway-service -am dependency:resolve -DskipTests
+# Pre-fetch dependencies (cached unless pom.xml changes)
+RUN mvn dependency:resolve -DskipTests
 
-# Copy code only after dependencies
-COPY gateway-service/src gateway-service/src
+# Now copy the full source code
+COPY src ./src
 
-RUN mvn -pl gateway-service -am clean package -DskipTests
+# Build the application
+RUN mvn -B clean package -DskipTests
 
-# -------- RUNTIME --------
+# -------- RUNTIME STAGE --------
 FROM eclipse-temurin:23-jre-alpine
 WORKDIR /app
-COPY --from=build /app/gateway-service/target/*.jar app.jar
-ENTRYPOINT ["java","-jar","app.jar"]
+
+# Copy the built JAR from the build stage
+COPY --from=build /app/target/*.jar app.jar
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
