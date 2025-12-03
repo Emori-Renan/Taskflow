@@ -109,7 +109,6 @@ jobs:
             -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ env.VERSION }} \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
             ./${{ matrix.service }}
-            .
 
       - name: Push Docker Images
         run: |
