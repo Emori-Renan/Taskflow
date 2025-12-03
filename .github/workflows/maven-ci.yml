@@ -33,23 +33,11 @@ jobs:
               - '.github/workflows/**'
             auth-service:
               - 'auth-service/**'
-            gateway-service:
-              - 'gateway-service/**'
-            user-service:
-              - 'user-service/**'
-            project-service:
-              - 'project-service/**'
-            task-service:
-              - 'task-service/**'
-            notification-service:
-              - 'notification-service/**'
-            employee-service:
-              - 'employee-service/**'
 
       - name: Determine list of services to build
         id: service_output
         run: |
-          ALL_SERVICES=("auth-service" "gateway-service" "user-service" "project-service" "task-service" "notification-service" "employee-service")
+          ALL_SERVICES=("auth-service" "gateway-service")
 
           CHANGED_SERVICES_ARRAY=()
 
