@@ -51,7 +51,7 @@ public class GatewayConfig {
                                 // .setKeyResolver(ipKeyResolver)
                                 // .setRateLimiter(redisRateLimiter)
                                 // )
-                                // )
+                                // ) 
                                 // .uri("http://user-service:8082"))  
                                 .build();
         }
