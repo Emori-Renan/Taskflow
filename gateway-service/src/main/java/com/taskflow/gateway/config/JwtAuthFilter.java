@@ -47,7 +47,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // 1. Allow public access to all /api/auth paths (login/register)
+        // 1. Allow public access to all /api/auth paths (login/register) 
         if (path.startsWith("/api/auth")) {
             return chain.filter(exchange);
         }

@@ -40,14 +40,13 @@ jobs:
         id: service_output
         run: |
           ALL_SERVICES=("auth-service" "gateway-service")
-
           CHANGED_SERVICES_ARRAY=()
 
           if [[ "${{ steps.filter.outputs.common }}" == 'true' ]]; then
             CHANGED_SERVICES_ARRAY=("${ALL_SERVICES[@]}")
           else
-            # Dump all outputs into a JSON object
-            FILTER_OUTPUT='${{ toJson(steps.filter.outputs) }}'
+            # Use environment variable to safely pass JSON
+            FILTER_OUTPUT=${FILTER_OUTPUT_JSON}
 
             for service in "${ALL_SERVICES[@]}"; do
               if echo "$FILTER_OUTPUT" | jq -e ".\"$service\" == true" > /dev/null; then
@@ -64,6 +63,8 @@ jobs:
 
           echo "Detected services to build: ${JSON_OUTPUT}"
           echo "json=${JSON_OUTPUT}" >> $GITHUB_OUTPUT
+        env:
+          FILTER_OUTPUT_JSON: ${{ toJson(steps.filter.outputs) }}
 
 
   build_and_push:

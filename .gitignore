@@ -59,3 +59,4 @@ gateway-service/target/maven-status/maven-compiler-plugin/compile/default-compil
 gateway-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst
 gateway-service/target/classes/application.yml
 gateway-service/target/classes/application.yml
+gateway-service/target/classes/application.yml
