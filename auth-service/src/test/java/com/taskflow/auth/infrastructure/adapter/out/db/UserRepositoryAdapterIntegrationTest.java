@@ -3,17 +3,23 @@ package com.taskflow.auth.infrastructure.adapter.out.db;
 import com.taskflow.auth.domain.model.User;
 import com.taskflow.auth.infrastructure.adapter.out.db.entity.UserEntity;
 import com.taskflow.auth.infrastructure.adapter.out.db.repository.SpringDataUserRepository;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 import reactor.test.StepVerifier;
 
-// Static import for JUnit 5 assertion methods (Fixes the syntax error)
-import static org.junit.jupiter.api.Assertions.*; 
+import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+@ActiveProfiles("test")
 @DataR2dbcTest
 @Import({ UserRepositoryAdapter.class, BCryptPasswordEncoder.class })
 class UserRepositoryAdapterIntegrationTest {
@@ -27,36 +33,50 @@ class UserRepositoryAdapterIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private DatabaseClient databaseClient;
+
+    private UUID insertTestUser(String username, String rawPassword, String role) {
+        UUID id = UUID.randomUUID();
+        String hashed = passwordEncoder.encode(rawPassword);
+
+        databaseClient.sql("""
+            INSERT INTO users (id, username, password, role)
+            VALUES (:id, :username, :password, :role)
+        """)
+        .bind("id", id)
+        .bind("username", username)
+        .bind("password", hashed)
+        .bind("role", role)
+        .fetch()
+        .rowsUpdated()
+        .block();
+
+        return id;
+    }
+
     @Test
     void save_shouldPersistUserAndHashPassword() {
-        // Arrange
         User rawUser = new User(
-                null,
+                UUID.randomUUID(),
                 "newuser",
                 "rawPassword123",
                 "ROLE_MEMBER"
         );
 
-        // Act & Assert: Adapter returns domain model
         StepVerifier.create(userRepositoryAdapter.save(rawUser))
                 .assertNext(savedUser -> {
-                    // Using JUnit 5 Assertions
-                    assertNotNull(savedUser.id(), "User ID should not be null after save.");
-                    assertEquals("newuser", savedUser.username(), "Username must match.");
-                    assertEquals("ROLE_MEMBER", savedUser.role(), "Role must match.");
+                    assertNotNull(savedUser.id(), "User ID should be generated.");
+                    assertEquals("newuser", savedUser.username());
+                    assertEquals("ROLE_MEMBER", savedUser.role());
                 })
                 .verifyComplete();
 
-        // Assert: Database contains hashed password
         StepVerifier.create(springDataRepository.findByUsername("newuser"))
                 .assertNext(entity ->
-                        // Using JUnit 5 Assertions
                         assertTrue(
-                                passwordEncoder.matches(
-                                        "rawPassword123",
-                                        entity.getPassword()
-                                ),
-                                "Password stored in DB must match the raw password after hashing."
+                                passwordEncoder.matches("rawPassword123", entity.getPassword()),
+                                "Password must be hashed in DB."
                         )
                 )
                 .verifyComplete();
@@ -64,31 +84,14 @@ class UserRepositoryAdapterIntegrationTest {
 
     @Test
     void findByUsername_shouldReturnDomainModelIfFound() {
-        // Arrange
-        String rawPassword = "testpass";
-        String hashedPassword = passwordEncoder.encode(rawPassword);
+        insertTestUser("existinguser", "testpass", "ROLE_ADMIN");
 
-        UserEntity entity = new UserEntity(
-                null,
-                "existinguser",
-                hashedPassword,
-                "ROLE_ADMIN"
-        );
-
-        // Pre-save the entity directly using the Spring Data repository
-        StepVerifier.create(springDataRepository.save(entity))
-                .expectNextCount(1)
-                .verifyComplete();
-
-        // Act & Assert
         StepVerifier.create(userRepositoryAdapter.findByUsername("existinguser"))
                 .assertNext(user -> {
-                    // Using JUnit 5 Assertions
-                    assertNotNull(user.id(), "User ID should not be null.");
-                    assertEquals("existinguser", user.username(), "Username must match.");
-                    // Check that the adapter returns the stored (hashed) password
-                    assertEquals(hashedPassword, user.password(), "Password must be the hashed one.");
-                    assertEquals("ROLE_ADMIN", user.role(), "Role must match.");
+                    assertNotNull(user.id());
+                    assertEquals("existinguser", user.username());
+                    assertEquals("ROLE_ADMIN", user.role());
+                    assertTrue(passwordEncoder.matches("testpass", user.password()));
                 })
                 .verifyComplete();
     }
@@ -97,5 +100,35 @@ class UserRepositoryAdapterIntegrationTest {
     void findByUsername_shouldCompleteEmptyIfNotFound() {
         StepVerifier.create(userRepositoryAdapter.findByUsername("nonexistent"))
                 .verifyComplete();
+    }
+
+    @Test
+    void save_shouldFailOnDuplicateUsername() {
+        insertTestUser("dupeuser", "secret", "ROLE_USER");
+
+        User duplicate = new User(
+                UUID.randomUUID(),
+                "dupeuser",
+                "anotherpass",
+                "ROLE_USER"
+        );
+
+        StepVerifier.create(userRepositoryAdapter.save(duplicate))
+                .expectError(DataIntegrityViolationException.class)
+                .verify();
+    }
+
+    @Test
+    void save_shouldFailOnNullUsername() {
+        User invalidUser = new User(
+                UUID.randomUUID(),
+                null,
+                "pass",
+                "ROLE_USER"
+        );
+
+        StepVerifier.create(userRepositoryAdapter.save(invalidUser))
+                .expectError(IllegalArgumentException.class)
+                .verify();
     }
 }
