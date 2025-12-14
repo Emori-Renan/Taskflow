@@ -69,7 +69,7 @@ class LoginServiceTest {
         
         // NOTE: In a reactive LoginService, tokenProvider.generateToken must return Mono<String>
         // If it returns String, this test is slightly incorrect for a purely reactive flow, 
-        // but we'll mock it as you provided for now.
+        // but we'll mock it as you provided for now. 
         when(tokenProvider.generateToken(testUser))
                 .thenReturn(MOCK_TOKEN); 
 
