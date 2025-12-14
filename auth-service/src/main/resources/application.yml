@@ -6,7 +6,7 @@ spring:
     name: auth-service
 
   datasource:
-    url: jdbc:postgresql://postgres:5432/authdb
+    url: r2dbc:postgresql://postgres:5432/authdb
     username: taskflow
     password: taskflow
 

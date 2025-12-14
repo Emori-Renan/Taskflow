@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/authdb
+    url: r2dbc:postgresql://postgres:5432/authdb
     username: taskflow
     password: taskflow   
   jpa:
