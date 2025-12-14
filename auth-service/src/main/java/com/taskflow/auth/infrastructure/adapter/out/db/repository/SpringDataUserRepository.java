@@ -9,5 +9,5 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 public interface SpringDataUserRepository extends ReactiveCrudRepository<UserEntity, UUID> {
-    Mono<UserEntity> findByUsername(String username);
+    Mono<UserEntity> findByEmail(String email);
 }

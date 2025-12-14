@@ -31,7 +31,7 @@ public class LoginService implements LoginUseCase {
     @Override
     public Mono<AuthResponseDTO> login(AuthRequestDTO request) {
 
-        return userRepository.findByUsername(request.username())
+        return userRepository.findByEmail(request.email())
             // 1️⃣ If user not found
             .switchIfEmpty(
                 Mono.error(new UserNotFoundException("User not found"))
@@ -48,7 +48,7 @@ public class LoginService implements LoginUseCase {
                 String token = tokenProvider.generateToken(user);
                 return new AuthResponseDTO(
                     token,
-                    user.username(),
+                    user.email(),
                     user.role()
                 );
             });

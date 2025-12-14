@@ -1,5 +1,6 @@
 package com.taskflow.auth.application.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.taskflow.auth.application.dto.AuthRequestDTO;
@@ -18,19 +19,22 @@ public class RegisterService implements RegisterUseCase {
 
     private final UserRepositoryPort userRepository;
     private final TokenProviderPort tokenProvider;
+    private final PasswordEncoder passwordEncoder;
 
     public RegisterService(UserRepositoryPort userRepository,
-                           TokenProviderPort tokenProvider) {
+            TokenProviderPort tokenProvider,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public Mono<AuthResponseDTO> register(AuthRequestDTO request) {
 
         // 1️⃣ Validate input (reactive-safe)
-        if (request.username() == null || request.username().isBlank()) {
-            return Mono.error(new InvalidInputException("Username cannot be empty."));
+        if (request.email() == null || request.email().isBlank()) {
+            return Mono.error(new InvalidInputException("Email cannot be empty."));
         }
 
         if (request.password() == null || request.password().isBlank()) {
@@ -38,28 +42,20 @@ public class RegisterService implements RegisterUseCase {
         }
 
         // 2️⃣ Check if user already exists
-        return userRepository.findByUsername(request.username())
-            .hasElement()
-            .flatMap(exists ->{
-                if (exists) {
-                    return Mono.error(new UserAlreadyExistsException(request.username()));
-                } 
-            return userRepository.save(
-                    new User(
-                        request.username(),
-                        request.password(),
-                        "USER"
-                    )
-                );
-            })
-            .map(savedUser -> {
-                String token = tokenProvider.generateToken(savedUser);
-                return new AuthResponseDTO(
-                    token,
-                    savedUser.username(),
-                    savedUser.role()
-                );
-            });
-            
+        return userRepository.findByEmail(request.email())
+                .hasElement()
+                .flatMap(exists -> {
+                    if (exists) {
+                        return Mono.error(new UserAlreadyExistsException(request.email()));
+                    }
+                    return userRepository.save(
+                            new User(
+                                    request.email(),
+                                    passwordEncoder.encode(request.password()),
+                                    "USER"));
+                })
+                .flatMap(savedUser -> Mono.just(tokenProvider.generateToken(savedUser))
+                        .map(token -> new AuthResponseDTO(token, savedUser.email(), savedUser.role())));
+
     }
 }

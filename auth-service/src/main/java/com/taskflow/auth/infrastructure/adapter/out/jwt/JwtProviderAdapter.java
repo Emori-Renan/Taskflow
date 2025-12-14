@@ -25,7 +25,7 @@ public class JwtProviderAdapter implements TokenProviderPort {
         var key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 
         return Jwts.builder()
-                .setSubject(user.username())
+                .setSubject(user.email())
                 .claim("role", user.role())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))

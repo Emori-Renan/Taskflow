@@ -23,7 +23,7 @@ import reactor.test.StepVerifier;
 import java.util.UUID;
 
 import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*; // <-- NEW: Static import for Assertions
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
 class LoginServiceTest {
@@ -49,10 +49,10 @@ class LoginServiceTest {
 
     @BeforeEach
     void setUp() {
-        validRequest = new AuthRequestDTO("existinguser", RAW_PASSWORD);
+        validRequest = new AuthRequestDTO("user@example.com", RAW_PASSWORD);
         testUser = new User(
                 UUID.randomUUID(),
-                "existinguser",
+                "user@example.com",
                 HASHED_PASSWORD,
                 "ROLE_ADMIN"
         );
@@ -60,41 +60,33 @@ class LoginServiceTest {
 
     @Test
     void login_shouldReturnAuthResponse_whenCredentialsAreValid() {
-        // Arrange
-        when(userRepository.findByUsername("existinguser"))
+        when(userRepository.findByEmail("user@example.com"))
                 .thenReturn(Mono.just(testUser));
 
         when(passwordEncoder.matches(RAW_PASSWORD, HASHED_PASSWORD))
                 .thenReturn(true);
-        
-        // NOTE: In a reactive LoginService, tokenProvider.generateToken must return Mono<String>
-        // If it returns String, this test is slightly incorrect for a purely reactive flow, 
-        // but we'll mock it as you provided for now. 
-        when(tokenProvider.generateToken(testUser))
-                .thenReturn(MOCK_TOKEN); 
 
-        // Act & Assert
+        when(tokenProvider.generateToken(testUser))
+                .thenReturn(MOCK_TOKEN);
+
         StepVerifier.create(loginService.login(validRequest))
                 .assertNext(response -> {
-                    // FIX: Replaced 'assert' keyword with assertEquals()
                     assertEquals(MOCK_TOKEN, response.token(), "Token must match mock token.");
-                    assertEquals("existinguser", response.username(), "Username must match.");
+                    assertEquals("user@example.com", response.email(), "Email must match.");
                     assertEquals("ROLE_ADMIN", response.role(), "Role must match.");
                 })
                 .verifyComplete();
 
-        verify(userRepository).findByUsername("existinguser");
+        verify(userRepository).findByEmail("user@example.com");
         verify(passwordEncoder).matches(RAW_PASSWORD, HASHED_PASSWORD);
         verify(tokenProvider).generateToken(testUser);
     }
 
     @Test
     void login_shouldError_whenUserNotFound() {
-        // Arrange
-        when(userRepository.findByUsername("existinguser"))
+        when(userRepository.findByEmail("user@example.com"))
                 .thenReturn(Mono.empty());
 
-        // Act & Assert
         StepVerifier.create(loginService.login(validRequest))
                 .expectError(UserNotFoundException.class)
                 .verify();
@@ -105,14 +97,12 @@ class LoginServiceTest {
 
     @Test
     void login_shouldError_whenPasswordIsInvalid() {
-        // Arrange
-        when(userRepository.findByUsername("existinguser"))
+        when(userRepository.findByEmail("user@example.com"))
                 .thenReturn(Mono.just(testUser));
 
         when(passwordEncoder.matches(RAW_PASSWORD, HASHED_PASSWORD))
                 .thenReturn(false);
 
-        // Act & Assert
         StepVerifier.create(loginService.login(validRequest))
                 .expectError(InvalidCredentialsException.class)
                 .verify();

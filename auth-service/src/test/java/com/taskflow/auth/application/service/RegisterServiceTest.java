@@ -14,6 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -26,98 +29,97 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class RegisterServiceTest {
 
-    @Mock
-    private UserRepositoryPort userRepository;
+        @Mock
+        private UserRepositoryPort userRepository;
 
-    @Mock
-    private TokenProviderPort tokenProvider;
+        @Mock
+        private TokenProviderPort tokenProvider;
 
-    @InjectMocks
-    private RegisterService registerService;
+        @Mock
+        private PasswordEncoder passwordEncoder;
 
-    private AuthRequestDTO validRequest;
+        @InjectMocks
+        private RegisterService registerService;
 
-    private static final String RAW_PASSWORD = "TestPassword123";
-    private static final String MOCK_TOKEN = "mocked.jwt.token";
+        private AuthRequestDTO validRequest;
 
-    @BeforeEach
-    void setUp() {
-        validRequest = new AuthRequestDTO("newuser", RAW_PASSWORD);
-    }
+        private static final String RAW_PASSWORD = "TestPassword123";
+        private static final String MOCK_TOKEN = "mocked.jwt.token";
 
-    @Test
-    void register_shouldCreateUserAndReturnAuthResponse_whenUserDoesNotExist() {
-        // Arrange
-        User savedUser = new User(
-                UUID.randomUUID(),
-                "newuser",
-                "hashedPassword",
-                "USER"
-        );
+        @BeforeEach
+        void setUp() {
+                validRequest = new AuthRequestDTO("newuser@example.com", RAW_PASSWORD);
+        }
 
-        when(userRepository.findByUsername("newuser"))
-                .thenReturn(Mono.empty());
+        @Test
+        void register_shouldCreateUserAndReturnAuthResponse_whenUserDoesNotExist() {
+                User savedUser = new User(
+                                UUID.randomUUID(),
+                                "newuser@example.com",
+                                "hashedPassword",
+                                "USER");
 
-        when(userRepository.save(any(User.class)))
-                .thenReturn(Mono.just(savedUser));
+                when(userRepository.findByEmail("newuser@example.com"))
+                                .thenReturn(Mono.empty());
 
-        when(tokenProvider.generateToken(savedUser))
-                .thenReturn(MOCK_TOKEN);
+                when(userRepository.save(any(User.class)))
+                                .thenReturn(Mono.just(savedUser));
 
-        // Act & Assert
-        StepVerifier.create(registerService.register(validRequest))
-                .assertNext(response -> {
-                    assert response.token().equals(MOCK_TOKEN);
-                    assert response.username().equals("newuser");
-                    assert response.role().equals("USER");
-                })
-                .verifyComplete();
+                when(tokenProvider.generateToken(savedUser))
+                                .thenReturn(MOCK_TOKEN);
 
-        verify(userRepository).save(any(User.class));
-        verify(tokenProvider).generateToken(savedUser);
-    }
+                when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn("hashedPassword");
 
-    @Test
-    void register_shouldError_whenUserAlreadyExists() {
-        // Arrange
-        User existingUser = new User(
-                UUID.randomUUID(),
-                "newuser",
-                "hashed",
-                "USER"
-        );
+                StepVerifier.create(registerService.register(validRequest))
+                                .assertNext(response -> {
+                                        assertEquals(MOCK_TOKEN, response.token());
+                                        assertEquals("newuser@example.com", response.email());
+                                        assertEquals("USER", response.role());
+                                })
+                                .verifyComplete();
 
-        when(userRepository.findByUsername("newuser"))
-                .thenReturn(Mono.just(existingUser));
+                verify(userRepository).save(any(User.class));
+                verify(tokenProvider).generateToken(savedUser);
+        }
 
-        // Act & Assert
-        StepVerifier.create(registerService.register(validRequest))
-                .expectError(UserAlreadyExistsException.class)
-                .verify();
+        @Test
+        void register_shouldError_whenUserAlreadyExists() {
+                User existingUser = new User(
+                                UUID.randomUUID(),
+                                "newuser@example.com",
+                                "hashed",
+                                "USER");
 
-        verify(userRepository, never()).save(any());
-        verify(tokenProvider, never()).generateToken(any());
-    }
+                when(userRepository.findByEmail("newuser@example.com"))
+                                .thenReturn(Mono.just(existingUser));
 
-    @Test
-    void register_shouldError_whenUsernameIsBlank() {
-        AuthRequestDTO request = new AuthRequestDTO(" ", RAW_PASSWORD);
+                StepVerifier.create(registerService.register(validRequest))
+                                .expectError(UserAlreadyExistsException.class)
+                                .verify();
 
-        StepVerifier.create(registerService.register(request))
-                .expectError(InvalidInputException.class)
-                .verify();
+                verify(userRepository, never()).save(any());
+                verify(tokenProvider, never()).generateToken(any());
+        }
 
-        verifyNoInteractions(userRepository);
-    }
+        @Test
+        void register_shouldError_whenEmailIsBlank() {
+                AuthRequestDTO request = new AuthRequestDTO(" ", RAW_PASSWORD);
 
-    @Test
-    void register_shouldError_whenPasswordIsNull() {
-        AuthRequestDTO request = new AuthRequestDTO("validuser", null);
+                StepVerifier.create(registerService.register(request))
+                                .expectError(InvalidInputException.class)
+                                .verify();
 
-        StepVerifier.create(registerService.register(request))
-                .expectError(InvalidInputException.class)
-                .verify();
+                verifyNoInteractions(userRepository);
+        }
 
-        verifyNoInteractions(userRepository);
-    }
+        @Test
+        void register_shouldError_whenPasswordIsNull() {
+                AuthRequestDTO request = new AuthRequestDTO("validuser@example.com", null);
+
+                StepVerifier.create(registerService.register(request))
+                                .expectError(InvalidInputException.class)
+                                .verify();
+
+                verifyNoInteractions(userRepository);
+        }
 }

@@ -28,32 +28,32 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
-    public Mono<User> findByUsername(String username) {
-        return repository.findByUsername(username)
+    public Mono<User> findByEmail(String email) {
+        return repository.findByEmail(email)
                 .map(this::toDomainModel);
     }
 
     @Override
     public Mono<User> save(User user) {
         UUID id = user.id() != null ? user.id() : UUID.randomUUID();
-        if (user.username() == null) {
-            return Mono.error(new IllegalArgumentException("Username must not be null"));
+        if (user.email() == null) {
+            return Mono.error(new IllegalArgumentException("Email must not be null"));
         }
         String hashedPassword = passwordEncoder.encode(user.password());
 
         return databaseClient.sql("""
-                    INSERT INTO users (id, username, password, role)
-                    VALUES (:id, :username, :password, :role)
+                    INSERT INTO users (id, email, password, role)
+                    VALUES (:id, :email, :password, :role)
                 """)
                 .bind("id", id)
-                .bind("username", user.username())
+                .bind("email", user.email())
                 .bind("password", hashedPassword)
                 .bind("role", user.role())
                 .fetch()
                 .rowsUpdated()
                 .flatMap(rows -> {
                     if (rows == 1) {
-                        return Mono.just(new User(id, user.username(), hashedPassword, user.role()));
+                        return Mono.just(new User(id, user.email(), hashedPassword, user.role()));
                     } else {
                         return Mono.error(new IllegalStateException("Failed to insert user"));
                     }
@@ -61,7 +61,7 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     private User toDomainModel(UserEntity entity) {
-        return new User(entity.getId(), entity.getUsername(), entity.getPassword(), entity.getRole());
+        return new User(entity.getId(), entity.getEmail(), entity.getPassword(), entity.getRole());
     }
 
 }

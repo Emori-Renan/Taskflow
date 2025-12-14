@@ -36,16 +36,16 @@ class UserRepositoryAdapterIntegrationTest {
     @Autowired
     private DatabaseClient databaseClient;
 
-    private UUID insertTestUser(String username, String rawPassword, String role) {
+    private UUID insertTestUser(String email, String rawPassword, String role) {
         UUID id = UUID.randomUUID();
         String hashed = passwordEncoder.encode(rawPassword);
 
         databaseClient.sql("""
-            INSERT INTO users (id, username, password, role)
-            VALUES (:id, :username, :password, :role)
+            INSERT INTO users (id, email, password, role)
+            VALUES (:id, :email, :password, :role)
         """)
         .bind("id", id)
-        .bind("username", username)
+        .bind("email", email)
         .bind("password", hashed)
         .bind("role", role)
         .fetch()
@@ -59,7 +59,7 @@ class UserRepositoryAdapterIntegrationTest {
     void save_shouldPersistUserAndHashPassword() {
         User rawUser = new User(
                 UUID.randomUUID(),
-                "newuser",
+                "newuser@example.com",
                 "rawPassword123",
                 "ROLE_MEMBER"
         );
@@ -67,12 +67,12 @@ class UserRepositoryAdapterIntegrationTest {
         StepVerifier.create(userRepositoryAdapter.save(rawUser))
                 .assertNext(savedUser -> {
                     assertNotNull(savedUser.id(), "User ID should be generated.");
-                    assertEquals("newuser", savedUser.username());
+                    assertEquals("newuser@example.com", savedUser.email());
                     assertEquals("ROLE_MEMBER", savedUser.role());
                 })
                 .verifyComplete();
 
-        StepVerifier.create(springDataRepository.findByUsername("newuser"))
+        StepVerifier.create(springDataRepository.findByEmail("newuser@example.com"))
                 .assertNext(entity ->
                         assertTrue(
                                 passwordEncoder.matches("rawPassword123", entity.getPassword()),
@@ -83,13 +83,13 @@ class UserRepositoryAdapterIntegrationTest {
     }
 
     @Test
-    void findByUsername_shouldReturnDomainModelIfFound() {
-        insertTestUser("existinguser", "testpass", "ROLE_ADMIN");
+    void findByEmail_shouldReturnDomainModelIfFound() {
+        insertTestUser("existinguser@example.com", "testpass", "ROLE_ADMIN");
 
-        StepVerifier.create(userRepositoryAdapter.findByUsername("existinguser"))
+        StepVerifier.create(userRepositoryAdapter.findByEmail("existinguser@example.com"))
                 .assertNext(user -> {
                     assertNotNull(user.id());
-                    assertEquals("existinguser", user.username());
+                    assertEquals("existinguser@example.com", user.email());
                     assertEquals("ROLE_ADMIN", user.role());
                     assertTrue(passwordEncoder.matches("testpass", user.password()));
                 })
@@ -97,18 +97,18 @@ class UserRepositoryAdapterIntegrationTest {
     }
 
     @Test
-    void findByUsername_shouldCompleteEmptyIfNotFound() {
-        StepVerifier.create(userRepositoryAdapter.findByUsername("nonexistent"))
+    void findByEmail_shouldCompleteEmptyIfNotFound() {
+        StepVerifier.create(userRepositoryAdapter.findByEmail("nonexistent@example.com"))
                 .verifyComplete();
     }
 
     @Test
-    void save_shouldFailOnDuplicateUsername() {
-        insertTestUser("dupeuser", "secret", "ROLE_USER");
+    void save_shouldFailOnDuplicateEmail() {
+        insertTestUser("dupe@example.com", "secret", "ROLE_USER");
 
         User duplicate = new User(
                 UUID.randomUUID(),
-                "dupeuser",
+                "dupe@example.com",
                 "anotherpass",
                 "ROLE_USER"
         );
@@ -119,7 +119,7 @@ class UserRepositoryAdapterIntegrationTest {
     }
 
     @Test
-    void save_shouldFailOnNullUsername() {
+    void save_shouldFailOnNullEmail() {
         User invalidUser = new User(
                 UUID.randomUUID(),
                 null,
