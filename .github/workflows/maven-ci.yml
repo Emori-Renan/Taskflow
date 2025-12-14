@@ -46,7 +46,7 @@ jobs:
             CHANGED_SERVICES_ARRAY=("${ALL_SERVICES[@]}")
           else
             # Use environment variable to safely pass JSON
-            FILTER_OUTPUT=${FILTER_OUTPUT_JSON}
+            FILTER_OUTPUT='${{ toJson(steps.filter.outputs) }}'
 
             for service in "${ALL_SERVICES[@]}"; do
               if echo "$FILTER_OUTPUT" | jq -e ".\"$service\" == true" > /dev/null; then
