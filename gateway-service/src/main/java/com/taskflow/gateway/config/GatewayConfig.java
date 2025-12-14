@@ -52,7 +52,7 @@ public class GatewayConfig {
                                 // .setRateLimiter(redisRateLimiter)
                                 // )
                                 // ) 
-                                // .uri("http://user-service:8082"))  sadfas 
+                                // .uri("http://user-service:8082")) 
                                 .build();
         }
 

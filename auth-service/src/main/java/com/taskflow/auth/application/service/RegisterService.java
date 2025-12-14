@@ -32,7 +32,7 @@ public class RegisterService implements RegisterUseCase {
     @Override
     public Mono<AuthResponseDTO> register(AuthRequestDTO request) {
 
-        // 1️⃣ Validate input (reactive-safe) 
+        // 1️⃣ Validate input (reactive-safe)     
         if (request.email() == null || request.email().isBlank()) {
             return Mono.error(new InvalidInputException("Email cannot be empty."));
         }

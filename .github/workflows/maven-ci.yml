@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - '*.md' 
+      - '*.md'
       - '.gitignore'
 
 jobs:
@@ -39,18 +39,27 @@ jobs:
       - name: Determine list of services to build
         id: service_output
         run: |
+          echo "🔍 Evaluating changed services..."
           ALL_SERVICES=("auth-service" "gateway-service")
           CHANGED_SERVICES_ARRAY=()
 
+          echo "Common changed: ${{ steps.filter.outputs.common }}"
+          echo "Filter output JSON:"
+          echo '${{ toJson(steps.filter.outputs) }}'
+
           if [[ "${{ steps.filter.outputs.common }}" == 'true' ]]; then
+            echo "🔁 Common files changed — triggering full build."
             CHANGED_SERVICES_ARRAY=("${ALL_SERVICES[@]}")
           else
-            # Use environment variable to safely pass JSON
             FILTER_OUTPUT='${{ toJson(steps.filter.outputs) }}'
 
             for service in "${ALL_SERVICES[@]}"; do
+              echo "Checking if $service changed..."
               if echo "$FILTER_OUTPUT" | jq -e ".\"$service\" == true" > /dev/null; then
+                echo "✅ $service has changed."
                 CHANGED_SERVICES_ARRAY+=("$service")
+              else
+                echo "❌ $service unchanged."
               fi
             done
           fi
@@ -61,11 +70,9 @@ jobs:
             JSON_OUTPUT=$(printf '%s\n' "${CHANGED_SERVICES_ARRAY[@]}" | jq -R . | jq -cs .)
           fi
 
-          echo "Detected services to build: ${JSON_OUTPUT}"
-          echo "json=${JSON_OUTPUT}" >> $GITHUB_OUTPUT
-        env:
-          FILTER_OUTPUT_JSON: ${{ toJson(steps.filter.outputs) }}
-
+          echo "Detected services to build: $JSON_OUTPUT"
+          echo "json=$JSON_OUTPUT" >> $GITHUB_OUTPUT
+        shell: bash
 
   build_and_push:
     needs: detect_changed_services
@@ -81,7 +88,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Debug services output for ${{ matrix.service }}
-        run: 'echo "Starting build for service: ${{ matrix.service }}"'
+        run: |
+          echo "🚀 Starting build for service: ${{ matrix.service }}"
 
       - name: Set up JDK 23
         uses: actions/setup-java@v4
@@ -92,7 +100,7 @@ jobs:
 
       - name: Build JAR for ${{ matrix.service }}
         working-directory: ./${{ matrix.service }}
-        run: mvn -B -Dspring.profiles.active=test clean install 
+        run: mvn -B -Dspring.profiles.active=test clean install
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
