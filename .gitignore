@@ -1,64 +1,64 @@
-# ----------------------------------------
-# 1. Build Artifacts (Critical Exclusion)
-# ----------------------------------------
+# ---------------------------------------------------
+# 1. Build Artifacts (Crucial Exclusions for Maven)
+# ---------------------------------------------------
 
-# The entire 'target' directory must be ignored.
-# It contains all compiled classes, the final JAR/WAR, reports, etc.
-/target/
+# Ignore all generated build directories across all modules
+# This covers /target/ in the root and in every submodule (e.g., auth-service/target/)
+**/target/
 
-# ----------------------------------------
-# 2. IDE and Editor Exclusions
-# ----------------------------------------
-
-### Visual Studio Code (VS Code) ###
-# Ignore the VS Code settings and launch files
-/.vscode/
-
-### Other Common IDEs (Keep these for collaboration) ###
-# IntelliJ IDEA
-.idea/
-*.iml
-
-# Eclipse
-.classpath
-.project
-.settings/
-
-# ----------------------------------------
-# 3. Java Specific Exclusions
-# ----------------------------------------
+# Java compilation artifacts
 *.class
 *.jar
 *.war
 *.ear
 
-# Virtual machine crash logs, if any
+# ---------------------------------------------------
+# 2. IDE and Editor Exclusions (Settings and Metadata)
+# ---------------------------------------------------
+
+### Visual Studio Code (VS Code) ###
+# VS Code settings and launch configuration
+.vscode/
+
+### IntelliJ IDEA ###
+# IntelliJ project files and workspace
+.idea/
+*.iml
+*.iws
+*.ipr
+
+### Eclipse ###
+# Eclipse project files
+.classpath
+.project
+.settings/
+
+# ---------------------------------------------------
+# 3. Java Runtime and OS Exclusions
+# ---------------------------------------------------
+
+# JVM crash logs
 hs_err_pid*
 
-# ----------------------------------------
-# 4. Operating System Exclusions
-# ----------------------------------------
-.DS_Store # macOS
-Thumbs.db # Windows
-auth-service/target/classes/application-dev.yml
-auth-service/target/classes/application.yml
-auth-service/target/classes/schema.sql
-auth-service/target/test-classes/application-test.yml
-.github/workflows/maven-ci.yml
-.github/workflows/maven-ci.yml
-.github/workflows/maven-ci.yml
-auth-service/target/auth-service-1.0.0.jar.original
-auth-service/target/maven-archiver/pom.properties
-auth-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst
-auth-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst
-auth-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/createdFiles.lst
-auth-service/target/maven-status/maven-compiler-plugin/testCompile/default-testCompile/inputFiles.lst
-gateway-service/target/gateway-service-1.0.0.jar.original
-gateway-service/target/maven-archiver/pom.properties
-gateway-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst
-gateway-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst
-gateway-service/target/classes/application.yml
-gateway-service/target/classes/application.yml
-gateway-service/target/
-auth-service/target/
-gateway-service/target/classes/application.yml
+# macOS metadata files
+.DS_Store
+
+# Windows thumbnail database
+Thumbs.db
+
+# ---------------------------------------------------
+# 4. Git-related Exclusions
+# ---------------------------------------------------
+
+# If you use Git worktrees
+.git/worktrees/
+
+# If you need to ignore specific local Git configuration (rarely needed)
+.git/config.local
+
+# ---------------------------------------------------
+# 5. External Tool Exclusions (Optional but helpful)
+# ---------------------------------------------------
+
+# Maven Wrapper binaries
+.mvn/wrapper/maven-wrapper.jar

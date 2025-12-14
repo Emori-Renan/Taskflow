@@ -68,8 +68,57 @@ services:
     networks:
       - taskflow-net
 
+    user-service:
+      build:
+        context: ./user-service
+        dockerfile: Dockerfile
+      container_name: user-service
+      ports:
+        - "8082:8082"
+      environment:
+        - server.port=8082
+        - spring.r2dbc.url=r2dbc:postgresql://user-postgres:5432/userdb
+        - spring.r2dbc.username=taskflow
+        - spring.r2dbc.password=taskflow
+        - spring.sql.init.mode=always
+
+        - aws.sqs.user-created-queue=user-created-queue
+        - spring.cloud.aws.region.static=us-east-1
+        - spring.cloud.aws.credentials.access-key=test
+        - spring.cloud.aws.credentials.secret-key=test
+        - spring.cloud.aws.endpoint.sqs=http://localstack:4566
+
+      depends_on:
+      - localstack
+      user-postgres:
+          condition: service_healthy
+      networks:
+        - taskflow-net
+
+  user-postgres:
+    image: postgres:15
+    container_name: user-postgres
+    environment:
+      POSTGRES_USER: taskflow
+      POSTGRES_PASSWORD: taskflow
+      POSTGRES_DB: userdb
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5434:5432"  # Host port 5434 mapped to container port 5432
+    volumes:
+      - userpgdata:/var/lib/postgresql/data
+    networks:
+      - taskflow-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow -d userdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
 volumes:
   pgdata:
+  userpgdata:
 
 networks:
   taskflow-net:
