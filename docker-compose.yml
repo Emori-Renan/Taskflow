@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:15
@@ -10,11 +8,17 @@ services:
       POSTGRES_DB: authdb
       POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5433:5432"
+      - "5433:5432" # Host port 5433 mapped to container port 5432
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
       - taskflow-net
+    # RECOMMENDED FIX: Healthcheck to ensure the DB is ready before the app starts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow -d authdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7
@@ -26,28 +30,38 @@ services:
 
   auth-service:
     build:
-      context: .
-      dockerfile: auth-service/Dockerfile
+      context: ./auth-service
+      dockerfile: Dockerfile
     container_name: auth-service
+    # NOTE: Application port should match your container port setup (8081 in this case)
     ports:
-      - "8081:8081"
+      - "8081:8081" 
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/authdb
-      - SPRING_DATASOURCE_USERNAME=taskflow
-      - SPRING_DATASOURCE_PASSWORD=taskflow
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - JWT_SECRET=yourSuperSecretKey
+      - spring.r2dbc.url=r2dbc:postgresql://postgres:5432/authdb
+      - spring.r2dbc.username=taskflow
+      - spring.r2dbc.password=taskflow
+      
+      # Recommended replacement for old 'SPRING_JPA_HIBERNATE_DDL_AUTO' for schema initialization
+      - spring.sql.init.mode=always 
+
+    # Use the healthcheck from the postgres service to guarantee DB readiness
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy 
+      
     networks:
       - taskflow-net
 
   gateway-service:
     build:
-      context: .
-      dockerfile: gateway-service/Dockerfile
+      context: ./gateway-service/
+      dockerfile: Dockerfile
     container_name: gateway-service
     ports:
       - "8080:8080"
+    environment:
+      - JWT_SECRET=yourSuperSecretKey
     depends_on:
       - auth-service
       - redis

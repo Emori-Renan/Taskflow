@@ -1,50 +1,34 @@
-package com.taskflow.auth.infrastructure.config; // <-- Package must match your file path
+package com.taskflow.auth.infrastructure.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 
-/**
- * Security configuration for the REST microservice.
- * This explicitly enables custom security and allows all necessary public paths.
- */
 @Configuration
-@EnableWebSecurity // <--- CRITICAL: This enables custom security and disables default behavior.
+@EnableWebFluxSecurity
 public class SecurityConfig {
 
     private static final String[] WHITE_LIST_URLS = {
-            // Public APIs (e.g., /api/auth/register, /api/auth/login)
-            "/api/auth/**", 
-            // OpenAPI UI Paths
-            "/v2/api-docs",
-            "/v3/api-docs",
+            "/api/auth/**",
             "/v3/api-docs/**",
-            "/swagger-resources",
-            "/swagger-resources/**",
-            "/configuration/ui",
-            "/configuration/security",
             "/swagger-ui/**",
-            "/webjars/**",
-            "/swagger-ui.html"
+            "/swagger-ui.html",
+            "/webjars/**"
     };
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
-            // 1. Disable CSRF for stateless REST APIs
-            .csrf(AbstractHttpConfigurer::disable)
+                // Stateless REST API
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
 
-            // 2. Configure request authorization
-            .authorizeHttpRequests(authorize -> authorize
-                // Allow public access to all paths listed above (Auth endpoints and OpenAPI)
-                .requestMatchers(WHITE_LIST_URLS).permitAll()
-                
-                // All other requests require authentication
-                .anyRequest().authenticated()
-            )
-            .build();
+                .authorizeExchange(exchange -> exchange
+                        .pathMatchers(WHITE_LIST_URLS).permitAll()
+                        .anyExchange().authenticated())
+
+                // JWT filter will go here later
+                .build();
     }
 }

@@ -5,6 +5,8 @@ import com.taskflow.auth.domain.model.User;
 import com.taskflow.auth.infrastructure.adapter.out.db.entity.UserEntity;
 import com.taskflow.auth.infrastructure.adapter.out.db.repository.SpringDataUserRepository;
 
+import reactor.core.publisher.Mono;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -22,16 +24,15 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
-    public Optional<User> findByUsername(String username) {
+    public Mono<User> findByUsername(String username) {
         return repository.findByUsername(username)
                 .map(this::toDomainModel);
     }
 
     @Override
-    public User save(User user) {
+    public Mono<User> save(User user) {
         UserEntity entityToSave = toPersistenceEntity(user);
-        UserEntity savedEntity = repository.save(entityToSave);
-        return toDomainModel(savedEntity);
+        return repository.save(entityToSave).map(this::toDomainModel);
     }
 
     private User toDomainModel(UserEntity entity) {

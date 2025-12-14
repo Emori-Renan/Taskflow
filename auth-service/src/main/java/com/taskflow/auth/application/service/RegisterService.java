@@ -11,6 +11,8 @@ import com.taskflow.auth.domain.exception.InvalidInputException;
 import com.taskflow.auth.domain.exception.UserAlreadyExistsException;
 import com.taskflow.auth.domain.model.User;
 
+import reactor.core.publisher.Mono;
+
 @Service
 public class RegisterService implements RegisterUseCase {
 
@@ -18,31 +20,46 @@ public class RegisterService implements RegisterUseCase {
     private final TokenProviderPort tokenProvider;
 
     public RegisterService(UserRepositoryPort userRepository,
-                       TokenProviderPort tokenProvider) {
+                           TokenProviderPort tokenProvider) {
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
     }
 
     @Override
-    public AuthResponseDTO register(AuthRequestDTO request) {
-        if (request.username() == null || request.username().trim().isEmpty()) {
-            throw new InvalidInputException("Username cannot be empty.");
-        }
-        if (request.password() == null || request.password().trim().isEmpty()) {
-            throw new InvalidInputException("Password cannot be empty.");
-        }
-        
-        if (userRepository.findByUsername(request.username()).isPresent()) {
-            throw new UserAlreadyExistsException(request.username());
+    public Mono<AuthResponseDTO> register(AuthRequestDTO request) {
+
+        // 1️⃣ Validate input (reactive-safe)
+        if (request.username() == null || request.username().isBlank()) {
+            return Mono.error(new InvalidInputException("Username cannot be empty."));
         }
 
-        var newUser = new User(
-                request.username(),
-                request.password(),
-                "USER");
+        if (request.password() == null || request.password().isBlank()) {
+            return Mono.error(new InvalidInputException("Password cannot be empty."));
+        }
 
-        var savedUser = userRepository.save(newUser);
-        var token = tokenProvider.generateToken(savedUser);
-        return new AuthResponseDTO(token, savedUser.username(), savedUser.role());
+        // 2️⃣ Check if user already exists
+        return userRepository.findByUsername(request.username())
+            .hasElement()
+            .flatMap(exists ->{
+                if (exists) {
+                    return Mono.error(new UserAlreadyExistsException(request.username()));
+                } 
+            return userRepository.save(
+                    new User(
+                        request.username(),
+                        request.password(),
+                        "USER"
+                    )
+                );
+            })
+            .map(savedUser -> {
+                String token = tokenProvider.generateToken(savedUser);
+                return new AuthResponseDTO(
+                    token,
+                    savedUser.username(),
+                    savedUser.role()
+                );
+            });
+            
     }
 }

@@ -1,10 +1,13 @@
 package com.taskflow.auth.infrastructure.adapter.out.db.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+
 import com.taskflow.auth.infrastructure.adapter.out.db.entity.UserEntity;
-import java.util.Optional;
+
+import reactor.core.publisher.Mono;
+
 import java.util.UUID;
 
-public interface SpringDataUserRepository extends JpaRepository<UserEntity, UUID> {
-    Optional<UserEntity> findByUsername(String username);
+public interface SpringDataUserRepository extends ReactiveCrudRepository<UserEntity, UUID> {
+    Mono<UserEntity> findByUsername(String username);
 }

@@ -18,6 +18,8 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.function.Predicate;
 
 @Component
 public class JwtAuthFilter implements GlobalFilter, Ordered {
@@ -28,9 +30,22 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     @Value("${jwt.secret}")
     private String secret;
 
+    private static final List<String> PUBLIC_PATHS = List.of(
+            "/api/auth",
+            "/swagger-ui",
+            "/swagger-ui.html",
+            "/v3/api-docs",
+            "/webjars");
+
+    private final Predicate<String> isPublicPath = path -> PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getPath().toString();
+
+        if (isPublicPath.test(path)) {
+            return chain.filter(exchange);
+        }
 
         // 1. Allow public access to all /api/auth paths (login/register)
         if (path.startsWith("/api/auth")) {

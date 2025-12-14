@@ -10,22 +10,30 @@ import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import reactor.core.publisher.Mono;
 
 @Tag(name = "Auth", description = "Auth management APIs")
 @RestController
-@RequestMapping("/api/auth") 
-public record AuthController(LoginUseCase loginUseCase, RegisterUseCase registerUseCase) {
+@RequestMapping("/api/auth")
+public record AuthController(
+        LoginUseCase loginUseCase,
+        RegisterUseCase registerUseCase
+) {
 
     @Operation(summary = "User login", description = "Authenticate user and return auth token")
     @PostMapping("/login")
-    public AuthResponseDTO login(@RequestBody AuthRequestDTO request) {
-        return loginUseCase.login(request);
+    public Mono<AuthResponseDTO> login(
+            @RequestBody Mono<AuthRequestDTO> request
+    ) {
+        return request.flatMap(loginUseCase::login);
     }
 
     @Operation(summary = "User registration", description = "Register a new user")
     @PostMapping("/register")
-    @ResponseStatus(HttpStatus.CREATED) 
-    public AuthResponseDTO register(@RequestBody AuthRequestDTO request) {
-        return registerUseCase.register(request);
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono<AuthResponseDTO> register(
+            @RequestBody Mono<AuthRequestDTO> request
+    ) {
+        return request.flatMap(registerUseCase::register);
     }
 }

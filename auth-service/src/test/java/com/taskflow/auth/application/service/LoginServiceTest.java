@@ -6,100 +6,117 @@ import com.taskflow.auth.application.port.out.UserRepositoryPort;
 import com.taskflow.auth.domain.exception.InvalidCredentialsException;
 import com.taskflow.auth.domain.exception.UserNotFoundException;
 import com.taskflow.auth.domain.model.User;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Optional;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*; // <-- NEW: Static import for Assertions
 
 @ExtendWith(MockitoExtension.class)
 class LoginServiceTest {
 
-    // Mocks for the ports and Spring security utility
     @Mock
     private UserRepositoryPort userRepository;
+
     @Mock
     private TokenProviderPort tokenProvider;
+
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    // Inject the mocks into the service being tested
     @InjectMocks
     private LoginService loginService;
 
     private AuthRequestDTO validRequest;
     private User testUser;
-    private final String RAW_PASSWORD = "CorrectPassword123";
-    private final String HASHED_PASSWORD = "$2a$10$hashedpasswordfromdb";
-    private final String MOCK_TOKEN = "mocked.jwt.token.login";
+
+    private static final String RAW_PASSWORD = "CorrectPassword123";
+    private static final String HASHED_PASSWORD = "$2a$10$hashedpasswordfromdb";
+    private static final String MOCK_TOKEN = "mocked.jwt.token.login";
 
     @BeforeEach
     void setUp() {
         validRequest = new AuthRequestDTO("existinguser", RAW_PASSWORD);
-        testUser = new User(UUID.randomUUID(), "existinguser", HASHED_PASSWORD, "ROLE_ADMIN");
+        testUser = new User(
+                UUID.randomUUID(),
+                "existinguser",
+                HASHED_PASSWORD,
+                "ROLE_ADMIN"
+        );
     }
 
-    // --- Successful Flow Test ---
-    
     @Test
     void login_shouldReturnAuthResponse_whenCredentialsAreValid() {
         // Arrange
-        // 1. Mock: User is found in the database
-        when(userRepository.findByUsername(validRequest.username())).thenReturn(Optional.of(testUser));
-        // 2. Mock: Password verification succeeds
-        when(passwordEncoder.matches(RAW_PASSWORD, HASHED_PASSWORD)).thenReturn(true);
-        // 3. Mock: Token is generated
-        when(tokenProvider.generateToken(testUser)).thenReturn(MOCK_TOKEN);
+        when(userRepository.findByUsername("existinguser"))
+                .thenReturn(Mono.just(testUser));
 
-        // Act
-        var response = loginService.login(validRequest);
-
-        // Assert
-        assertNotNull(response);
-        assertEquals(MOCK_TOKEN, response.token());
-        assertEquals("existinguser", response.username());
-        assertEquals("ROLE_ADMIN", response.role());
+        when(passwordEncoder.matches(RAW_PASSWORD, HASHED_PASSWORD))
+                .thenReturn(true);
         
-        // Verify all required steps were executed once
-        verify(userRepository, times(1)).findByUsername(validRequest.username());
-        verify(passwordEncoder, times(1)).matches(RAW_PASSWORD, HASHED_PASSWORD);
-        verify(tokenProvider, times(1)).generateToken(testUser);
-    }
-
-    // --- Failure/Exception Tests ---
-    
-    @Test
-    void login_shouldThrowUserNotFoundException_whenUserDoesNotExist() {
-        // Arrange
-        when(userRepository.findByUsername(validRequest.username())).thenReturn(Optional.empty());
+        // NOTE: In a reactive LoginService, tokenProvider.generateToken must return Mono<String>
+        // If it returns String, this test is slightly incorrect for a purely reactive flow, 
+        // but we'll mock it as you provided for now.
+        when(tokenProvider.generateToken(testUser))
+                .thenReturn(MOCK_TOKEN); 
 
         // Act & Assert
-        assertThrows(UserNotFoundException.class, () -> loginService.login(validRequest));
-        
-        // Verify password check and token generation were skipped
-        verify(passwordEncoder, never()).matches(anyString(), anyString()); 
+        StepVerifier.create(loginService.login(validRequest))
+                .assertNext(response -> {
+                    // FIX: Replaced 'assert' keyword with assertEquals()
+                    assertEquals(MOCK_TOKEN, response.token(), "Token must match mock token.");
+                    assertEquals("existinguser", response.username(), "Username must match.");
+                    assertEquals("ROLE_ADMIN", response.role(), "Role must match.");
+                })
+                .verifyComplete();
+
+        verify(userRepository).findByUsername("existinguser");
+        verify(passwordEncoder).matches(RAW_PASSWORD, HASHED_PASSWORD);
+        verify(tokenProvider).generateToken(testUser);
+    }
+
+    @Test
+    void login_shouldError_whenUserNotFound() {
+        // Arrange
+        when(userRepository.findByUsername("existinguser"))
+                .thenReturn(Mono.empty());
+
+        // Act & Assert
+        StepVerifier.create(loginService.login(validRequest))
+                .expectError(UserNotFoundException.class)
+                .verify();
+
+        verify(passwordEncoder, never()).matches(any(), any());
         verify(tokenProvider, never()).generateToken(any());
     }
 
     @Test
-    void login_shouldThrowInvalidCredentialsException_whenPasswordIsInvalid() {
+    void login_shouldError_whenPasswordIsInvalid() {
         // Arrange
-        when(userRepository.findByUsername(validRequest.username())).thenReturn(Optional.of(testUser));
-        // Mock: Password verification fails
-        when(passwordEncoder.matches(validRequest.password(), HASHED_PASSWORD)).thenReturn(false);
+        when(userRepository.findByUsername("existinguser"))
+                .thenReturn(Mono.just(testUser));
+
+        when(passwordEncoder.matches(RAW_PASSWORD, HASHED_PASSWORD))
+                .thenReturn(false);
 
         // Act & Assert
-        assertThrows(InvalidCredentialsException.class, () -> loginService.login(validRequest));
-        
-        // Verify token generation was skipped
+        StepVerifier.create(loginService.login(validRequest))
+                .expectError(InvalidCredentialsException.class)
+                .verify();
+
         verify(tokenProvider, never()).generateToken(any());
     }
 }

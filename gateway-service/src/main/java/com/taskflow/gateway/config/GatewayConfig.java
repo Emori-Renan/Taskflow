@@ -12,42 +12,48 @@ import reactor.core.publisher.Mono;
 @Configuration
 public class GatewayConfig {
 
-    @Bean
-    public KeyResolver ipKeyResolver() {
-        return exchange -> Mono.just(exchange.getRequest()
-                .getRemoteAddress()
-                .getAddress()
-                .getHostAddress());
-    }
+        @Bean
+        public KeyResolver ipKeyResolver() {
+                return exchange -> Mono.just(exchange.getRequest()
+                                .getRemoteAddress()
+                                .getAddress()
+                                .getHostAddress());
+        }
 
-    @Bean
-    public RedisRateLimiter redisRateLimiter() {
-        return new RedisRateLimiter(5, 10);
-    }
+        @Bean
+        public RedisRateLimiter redisRateLimiter() {
+                return new RedisRateLimiter(5, 10);
+        }
 
-    @Bean
-    public RouteLocator routes(RouteLocatorBuilder builder,
-                               RedisRateLimiter redisRateLimiter,
-                               RequestRateLimiterGatewayFilterFactory rateLimiterFactory, 
-                               KeyResolver ipKeyResolver) { 
-        return builder.routes()
-                .route("auth-service", r -> r.path("/api/auth/**")
-                        .filters(f -> f
-                                .requestRateLimiter(c -> c
-                                        .setKeyResolver(ipKeyResolver)
-                                        .setRateLimiter(redisRateLimiter) 
-                                )
-                        )
-                        .uri("http://auth-service:8081"))
+        @Bean
+        public RouteLocator routes(RouteLocatorBuilder builder,
+                        RedisRateLimiter redisRateLimiter,
+                        RequestRateLimiterGatewayFilterFactory rateLimiterFactory,
+                        KeyResolver ipKeyResolver) {
+                return builder.routes()
+                                .route("auth-service", r -> r.path("/api/auth/**")
+                                                .filters(f -> f
+                                                                .rewritePath("/api/auth(?<remaining>.*)",
+                                                                                "/${remaining}")
+                                                                .requestRateLimiter(c -> c
+                                                                                .setKeyResolver(ipKeyResolver)
+                                                                                .setRateLimiter(redisRateLimiter)))
+                                                .uri("http://auth-service:8081"))
 
-                // .route("user-service", r -> r.path("/api/users/**")
-                //         .filters(f -> f
-                //                 .requestRateLimiter(c -> c
-                //                         .setKeyResolver(ipKeyResolver)
-                //                         .setRateLimiter(redisRateLimiter) 
-                //                 )
-                //         )
-                //         .uri("http://user-service:8082"))     
-                .build();
-    }
+                                .route("swagger-ui", r -> r.path("/swagger-ui/**")
+                                                .uri("http://auth-service:8081"))
+                                .route("auth-docs", r -> r.path("/v3/api-docs/**")
+                                                .uri("http://auth-service:8081"))
+
+                                // .route("user-service", r -> r.path("/api/users/**")
+                                // .filters(f -> f
+                                // .requestRateLimiter(c -> c
+                                // .setKeyResolver(ipKeyResolver)
+                                // .setRateLimiter(redisRateLimiter)
+                                // )
+                                // )
+                                // .uri("http://user-service:8082"))
+                                .build();
+        }
+
 }

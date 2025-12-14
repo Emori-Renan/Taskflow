@@ -57,3 +57,5 @@ gateway-service/target/gateway-service-1.0.0.jar.original
 gateway-service/target/maven-archiver/pom.properties
 gateway-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst
 gateway-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst
+gateway-service/target/classes/application.yml
+gateway-service/target/classes/application.yml

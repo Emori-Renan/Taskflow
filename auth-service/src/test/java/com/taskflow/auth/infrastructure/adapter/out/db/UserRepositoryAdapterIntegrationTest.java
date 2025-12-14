@@ -1,28 +1,26 @@
 package com.taskflow.auth.infrastructure.adapter.out.db;
 
 import com.taskflow.auth.domain.model.User;
+import com.taskflow.auth.infrastructure.adapter.out.db.entity.UserEntity;
 import com.taskflow.auth.infrastructure.adapter.out.db.repository.SpringDataUserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import java.util.Optional;
+import reactor.test.StepVerifier;
 
-import static org.junit.jupiter.api.Assertions.*;
+// Static import for JUnit 5 assertion methods (Fixes the syntax error)
+import static org.junit.jupiter.api.Assertions.*; 
 
-// Configure the test to run within a Spring Data JPA context
-@DataJpaTest
-// Import the adapter and its required dependencies (PasswordEncoder)
-@Import({UserRepositoryAdapter.class, BCryptPasswordEncoder.class}) 
+@DataR2dbcTest
+@Import({ UserRepositoryAdapter.class, BCryptPasswordEncoder.class })
 class UserRepositoryAdapterIntegrationTest {
 
-    // The adapter we are testing
     @Autowired
     private UserRepositoryAdapter userRepositoryAdapter;
 
-    // The underlying repository (used for verification/setup only)
     @Autowired
     private SpringDataUserRepository springDataRepository;
 
@@ -31,52 +29,73 @@ class UserRepositoryAdapterIntegrationTest {
 
     @Test
     void save_shouldPersistUserAndHashPassword() {
-        // Arrange: The User domain object has a raw password
-        User rawUser = new User(null, "newuser", "rawPassword123", "ROLE_MEMBER");
+        // Arrange
+        User rawUser = new User(
+                null,
+                "newuser",
+                "rawPassword123",
+                "ROLE_MEMBER"
+        );
 
-        // Act
-        User savedUser = userRepositoryAdapter.save(rawUser);
+        // Act & Assert: Adapter returns domain model
+        StepVerifier.create(userRepositoryAdapter.save(rawUser))
+                .assertNext(savedUser -> {
+                    // Using JUnit 5 Assertions
+                    assertNotNull(savedUser.id(), "User ID should not be null after save.");
+                    assertEquals("newuser", savedUser.username(), "Username must match.");
+                    assertEquals("ROLE_MEMBER", savedUser.role(), "Role must match.");
+                })
+                .verifyComplete();
 
-        // Assert: 1. The domain object mapping is correct
-        assertNotNull(savedUser.id(), "ID should be generated.");
-        assertEquals(rawUser.username(), savedUser.username());
-        assertEquals(rawUser.role(), savedUser.role());
-        
-        // Assert: 2. The entity in the DB has a HASHED password
-        var entity = springDataRepository.findByUsername(rawUser.username());
-        assertTrue(entity.isPresent());
-        assertTrue(passwordEncoder.matches("rawPassword123", entity.get().getPassword()), 
-                   "Password must be hashed correctly in the database.");
+        // Assert: Database contains hashed password
+        StepVerifier.create(springDataRepository.findByUsername("newuser"))
+                .assertNext(entity ->
+                        // Using JUnit 5 Assertions
+                        assertTrue(
+                                passwordEncoder.matches(
+                                        "rawPassword123",
+                                        entity.getPassword()
+                                ),
+                                "Password stored in DB must match the raw password after hashing."
+                        )
+                )
+                .verifyComplete();
     }
 
     @Test
     void findByUsername_shouldReturnDomainModelIfFound() {
-        // Arrange: Manually save an entity (with a pre-hashed password)
+        // Arrange
         String rawPassword = "testpass";
         String hashedPassword = passwordEncoder.encode(rawPassword);
-        
-        // This simulates a user already existing in the database
-        springDataRepository.save(new com.taskflow.auth.infrastructure.adapter.out.db.entity.UserEntity(
-                "existinguser", hashedPassword, "ROLE_ADMIN"));
 
-        // Act
-        Optional<User> foundUser = userRepositoryAdapter.findByUsername("existinguser");
+        UserEntity entity = new UserEntity(
+                null,
+                "existinguser",
+                hashedPassword,
+                "ROLE_ADMIN"
+        );
 
-        // Assert
-        assertTrue(foundUser.isPresent(), "User should be found.");
-        User user = foundUser.get();
-        assertEquals("existinguser", user.username());
-        // The adapter should return the HASHED password from the DB in the domain model
-        assertEquals(hashedPassword, user.password(), "Password in domain model should be the hashed one from DB.");
-        assertNotNull(user.id());
+        // Pre-save the entity directly using the Spring Data repository
+        StepVerifier.create(springDataRepository.save(entity))
+                .expectNextCount(1)
+                .verifyComplete();
+
+        // Act & Assert
+        StepVerifier.create(userRepositoryAdapter.findByUsername("existinguser"))
+                .assertNext(user -> {
+                    // Using JUnit 5 Assertions
+                    assertNotNull(user.id(), "User ID should not be null.");
+                    assertEquals("existinguser", user.username(), "Username must match.");
+                    // Check that the adapter returns the stored (hashed) password
+                    assertEquals(hashedPassword, user.password(), "Password must be the hashed one.");
+                    assertEquals("ROLE_ADMIN", user.role(), "Role must match.");
+                })
+                .verifyComplete();
     }
 
     @Test
-    void findByUsername_shouldReturnEmptyOptionalIfNotFound() {
-        // Act
-        Optional<User> foundUser = userRepositoryAdapter.findByUsername("nonexistent");
-
-        // Assert
-        assertTrue(foundUser.isEmpty(), "Optional should be empty for a nonexistent user.");
+    void findByUsername_shouldCompleteEmptyIfNotFound() {
+        StepVerifier.create(userRepositoryAdapter.findByUsername("nonexistent"))
+                .verifyComplete();
     }
 }
