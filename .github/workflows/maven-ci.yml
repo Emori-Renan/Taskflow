@@ -40,6 +40,8 @@ jobs:
 
       - name: Determine list of services to build
         id: service_output
+        env:
+          FILTER_OUTPUT: ${{ toJson(steps.filter.outputs) }}
         run: |
           echo "🔍 Evaluating changed services..."
           ALL_SERVICES=("auth-service" "gateway-service" "user-service")
@@ -47,17 +49,15 @@ jobs:
 
           echo "Common changed: ${{ steps.filter.outputs.common }}"
           echo "Filter output JSON:"
-          echo '${{ toJson(steps.filter.outputs) }}'
+          echo "$FILTER_OUTPUT"
 
           if [[ "${{ steps.filter.outputs.common }}" == 'true' ]]; then
             echo "🔁 Common files changed — triggering full build."
             CHANGED_SERVICES_ARRAY=("${ALL_SERVICES[@]}")
           else
-            FILTER_OUTPUT=${{ toJson(steps.filter.outputs) }}
-
             for service in "${ALL_SERVICES[@]}"; do
               echo "Checking if $service changed..."
-              if echo "$FILTER_OUTPUT" | jq -e ".\"$service\" == true" > /dev/null; then
+              if echo "$FILTER_OUTPUT" | jq -e ".\"$service\" == \"true\"" > /dev/null; then
                 echo "✅ $service has changed."
                 CHANGED_SERVICES_ARRAY+=("$service")
               else
