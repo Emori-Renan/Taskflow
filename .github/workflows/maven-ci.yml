@@ -53,7 +53,7 @@ jobs:
             echo "🔁 Common files changed — triggering full build."
             CHANGED_SERVICES_ARRAY=("${ALL_SERVICES[@]}")
           else
-            FILTER_OUTPUT='${{ toJson(steps.filter.outputs) }}'
+            FILTER_OUTPUT=${{ toJson(steps.filter.outputs) }}
 
             for service in "${ALL_SERVICES[@]}"; do
               echo "Checking if $service changed..."
