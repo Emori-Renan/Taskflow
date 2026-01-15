@@ -62,3 +62,4 @@ Thumbs.db
 
 # Maven Wrapper binaries
 .mvn/wrapper/maven-wrapper.jar
+user-service/src/main/resources/logback-spring.xml

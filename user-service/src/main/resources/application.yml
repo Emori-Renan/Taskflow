@@ -27,6 +27,12 @@ logging:
     com.taskflow: DEBUG
     software.amazon.awssdk: WARN
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+        
 aws:
   sqs:
     user-created-queue: user-created-queue

@@ -1,7 +1,6 @@
 package com.taskflow.auth.infrastructure.adapter.out.db;
 
 import com.taskflow.auth.domain.model.User;
-import com.taskflow.auth.infrastructure.adapter.out.db.entity.UserEntity;
 import com.taskflow.auth.infrastructure.adapter.out.db.repository.SpringDataUserRepository;
 
 import org.junit.jupiter.api.Test;
