@@ -1,5 +1,7 @@
 package com.taskflow.auth.application.service;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,8 @@ public class RegisterService implements RegisterUseCase {
     private final TokenProviderPort tokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenStoragePort refreshTokenStorage;
+    private final Counter registrationSuccessCounter;
+    private final Counter registrationFailureCounter;
 
     @org.springframework.beans.factory.annotation.Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
@@ -28,43 +32,56 @@ public class RegisterService implements RegisterUseCase {
     public RegisterService(UserRepositoryPort userRepository,
             TokenProviderPort tokenProvider,
             PasswordEncoder passwordEncoder,
-            RefreshTokenStoragePort refreshTokenStorage) {
+            RefreshTokenStoragePort refreshTokenStorage,
+            MeterRegistry meterRegistry) {
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenStorage = refreshTokenStorage;
+        this.registrationSuccessCounter = Counter.builder("auth.registration")
+                .tag("outcome", "success")
+                .register(meterRegistry);
+        this.registrationFailureCounter = Counter.builder("auth.registration")
+                .tag("outcome", "failure")
+                .register(meterRegistry);
     }
 
     @Override
     @Transactional
     public AuthResponseDTO register(AuthRequestDTO request) {
-        // 1. Validate input
-        if (request.email() == null || request.email().isBlank()) {
-            throw new InvalidInputException("Email cannot be empty.");
+        try {
+            // 1. Validate input
+            if (request.email() == null || request.email().isBlank()) {
+                throw new InvalidInputException("Email cannot be empty.");
+            }
+
+            if (request.password() == null || request.password().isBlank()) {
+                throw new InvalidInputException("Password cannot be empty.");
+            }
+
+            // 2. Check if user already exists
+            if (userRepository.findByEmail(request.email()).isPresent()) {
+                throw new UserAlreadyExistsException(request.email());
+            }
+
+            // 3. Save new user (password will be hashed in adapter)
+            User newUser = new User(
+                request.email(),
+                request.password(),
+                "USER"
+            );
+            User savedUser = userRepository.save(newUser);
+
+            // 4. Generate tokens and return response
+            String accessToken = tokenProvider.generateToken(savedUser);
+            String refreshToken = tokenProvider.generateRefreshToken(savedUser);
+            refreshTokenStorage.store(savedUser.email(), refreshToken, refreshExpiration);
+
+            registrationSuccessCounter.increment();
+            return new AuthResponseDTO(accessToken, refreshToken, savedUser.email(), savedUser.role());
+        } catch (Exception e) {
+            registrationFailureCounter.increment();
+            throw e;
         }
-
-        if (request.password() == null || request.password().isBlank()) {
-            throw new InvalidInputException("Password cannot be empty.");
-        }
-
-        // 2. Check if user already exists
-        if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new UserAlreadyExistsException(request.email());
-        }
-
-        // 3. Save new user (password will be hashed in adapter)
-        User newUser = new User(
-            request.email(),
-            request.password(),
-            "USER"
-        );
-        User savedUser = userRepository.save(newUser);
-
-        // 4. Generate tokens and return response
-        String accessToken = tokenProvider.generateToken(savedUser);
-        String refreshToken = tokenProvider.generateRefreshToken(savedUser);
-        refreshTokenStorage.store(savedUser.email(), refreshToken, refreshExpiration);
-
-        return new AuthResponseDTO(accessToken, refreshToken, savedUser.email(), savedUser.role());
     }
 }

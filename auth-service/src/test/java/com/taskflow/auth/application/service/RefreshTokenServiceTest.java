@@ -8,11 +8,12 @@ import com.taskflow.auth.domain.exception.InvalidTokenException;
 import com.taskflow.auth.domain.exception.UserNotFoundException;
 import com.taskflow.auth.domain.model.User;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -36,7 +37,7 @@ class RefreshTokenServiceTest {
     @Mock
     private UserRepositoryPort userRepository;
 
-    @InjectMocks
+    private MeterRegistry meterRegistry;
     private RefreshTokenService refreshTokenService;
 
     private User testUser;
@@ -47,6 +48,9 @@ class RefreshTokenServiceTest {
 
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
+        refreshTokenService = new RefreshTokenService(tokenProvider, refreshTokenStorage,
+                userRepository, meterRegistry);
         testUser = new User(UUID.randomUUID(), TEST_EMAIL, "hashedpassword", "USER");
         ReflectionTestUtils.setField(refreshTokenService, "refreshExpiration", 604800000L);
     }

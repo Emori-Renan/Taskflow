@@ -8,11 +8,12 @@ import com.taskflow.auth.domain.exception.InvalidCredentialsException;
 import com.taskflow.auth.domain.exception.UserNotFoundException;
 import com.taskflow.auth.domain.model.User;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -40,7 +41,7 @@ class LoginServiceTest {
     @Mock
     private RefreshTokenStoragePort refreshTokenStorage;
 
-    @InjectMocks
+    private MeterRegistry meterRegistry;
     private LoginService loginService;
 
     private AuthRequestDTO validRequest;
@@ -53,6 +54,9 @@ class LoginServiceTest {
 
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
+        loginService = new LoginService(userRepository, tokenProvider, passwordEncoder,
+                refreshTokenStorage, meterRegistry);
         validRequest = new AuthRequestDTO("user@example.com", RAW_PASSWORD);
         testUser = new User(
                 UUID.randomUUID(),

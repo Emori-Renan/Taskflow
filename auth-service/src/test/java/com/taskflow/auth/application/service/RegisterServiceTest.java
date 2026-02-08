@@ -8,11 +8,12 @@ import com.taskflow.auth.domain.exception.InvalidInputException;
 import com.taskflow.auth.domain.exception.UserAlreadyExistsException;
 import com.taskflow.auth.domain.model.User;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,7 +42,7 @@ class RegisterServiceTest {
         @Mock
         private RefreshTokenStoragePort refreshTokenStorage;
 
-        @InjectMocks
+        private MeterRegistry meterRegistry;
         private RegisterService registerService;
 
         private AuthRequestDTO validRequest;
@@ -52,6 +53,9 @@ class RegisterServiceTest {
 
         @BeforeEach
         void setUp() {
+                meterRegistry = new SimpleMeterRegistry();
+                registerService = new RegisterService(userRepository, tokenProvider, passwordEncoder,
+                        refreshTokenStorage, meterRegistry);
                 validRequest = new AuthRequestDTO("newuser@example.com", RAW_PASSWORD);
                 ReflectionTestUtils.setField(registerService, "refreshExpiration", 604800000L);
         }

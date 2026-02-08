@@ -35,8 +35,8 @@ jobs:
               - 'auth-service/**'
             gateway-service:
               - 'gateway-service/**'
-            user-service:
-              - 'user-service/**'
+            # user-service:
+            #   - 'user-service/**'
 
       - name: Determine list of services to build
         id: service_output
@@ -44,7 +44,8 @@ jobs:
           FILTER_OUTPUT: ${{ toJson(steps.filter.outputs) }}
         run: |
           echo "🔍 Evaluating changed services..."
-          ALL_SERVICES=("auth-service" "gateway-service" "user-service")
+          ALL_SERVICES=("auth-service" "gateway-service")
+          # Add "user-service" back when it's ready for CI
           CHANGED_SERVICES_ARRAY=()
 
           echo "Common changed: ${{ steps.filter.outputs.common }}"

@@ -129,11 +129,86 @@ services:
     networks:
       - taskflow-net
 
+  # --- Observability Stack ---
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: taskflow-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - auth-service
+    networks:
+      - taskflow-net
+
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: taskflow-tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/var/tempo
+    networks:
+      - taskflow-net
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: taskflow-loki
+    command: ["-config.file=/etc/loki/loki.yml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    networks:
+      - taskflow-net
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: taskflow-promtail
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./observability/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - //var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - taskflow-net
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: taskflow-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    networks:
+      - taskflow-net
+
 
 volumes:
   pgdata:
   userpgdata:
   localstack-data:
+  prometheus-data:
+  tempo-data:
+  loki-data:
+  grafana-data:
 
 networks:
   taskflow-net:

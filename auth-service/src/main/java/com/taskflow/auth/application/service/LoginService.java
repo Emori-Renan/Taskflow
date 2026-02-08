@@ -1,5 +1,7 @@
 package com.taskflow.auth.application.service;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,8 @@ public class LoginService implements LoginUseCase {
     private final TokenProviderPort tokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenStoragePort refreshTokenStorage;
+    private final Counter loginSuccessCounter;
+    private final Counter loginFailureCounter;
 
     @org.springframework.beans.factory.annotation.Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
@@ -28,30 +32,43 @@ public class LoginService implements LoginUseCase {
     public LoginService(UserRepositoryPort userRepository,
                         TokenProviderPort tokenProvider,
                         PasswordEncoder passwordEncoder,
-                        RefreshTokenStoragePort refreshTokenStorage) {
+                        RefreshTokenStoragePort refreshTokenStorage,
+                        MeterRegistry meterRegistry) {
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenStorage = refreshTokenStorage;
+        this.loginSuccessCounter = Counter.builder("auth.login")
+                .tag("outcome", "success")
+                .register(meterRegistry);
+        this.loginFailureCounter = Counter.builder("auth.login")
+                .tag("outcome", "failure")
+                .register(meterRegistry);
     }
 
     @Override
     @Transactional(readOnly = true)
     public AuthResponseDTO login(AuthRequestDTO request) {
-        // 1. Find user by email
-        User user = userRepository.findByEmail(request.email())
-            .orElseThrow(() -> new UserNotFoundException("User not found"));
+        try {
+            // 1. Find user by email
+            User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        // 2. Validate password
-        if (!passwordEncoder.matches(request.password(), user.password())) {
-            throw new InvalidCredentialsException();
+            // 2. Validate password
+            if (!passwordEncoder.matches(request.password(), user.password())) {
+                throw new InvalidCredentialsException();
+            }
+
+            // 3. Generate tokens and return response
+            String accessToken = tokenProvider.generateToken(user);
+            String refreshToken = tokenProvider.generateRefreshToken(user);
+            refreshTokenStorage.store(user.email(), refreshToken, refreshExpiration);
+
+            loginSuccessCounter.increment();
+            return new AuthResponseDTO(accessToken, refreshToken, user.email(), user.role());
+        } catch (Exception e) {
+            loginFailureCounter.increment();
+            throw e;
         }
-
-        // 3. Generate tokens and return response
-        String accessToken = tokenProvider.generateToken(user);
-        String refreshToken = tokenProvider.generateRefreshToken(user);
-        refreshTokenStorage.store(user.email(), refreshToken, refreshExpiration);
-
-        return new AuthResponseDTO(accessToken, refreshToken, user.email(), user.role());
     }
 }
