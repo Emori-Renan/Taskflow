@@ -2,23 +2,23 @@ package com.taskflow.auth.infrastructure.adapter.out.db.entity;
 
 import java.util.UUID;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import jakarta.persistence.*;
 
-@Table("users")
+@Entity
+@Table(name = "users")
 public class UserEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column("email")
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
-    @Column("password")
+    @Column(name = "password", nullable = false)
     private String password;
 
-    @Column("role")
+    @Column(name = "role", nullable = false)
     private String role;
 
     public UserEntity() {

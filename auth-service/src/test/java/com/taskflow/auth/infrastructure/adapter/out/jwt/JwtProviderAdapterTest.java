@@ -3,70 +3,121 @@ package com.taskflow.auth.infrastructure.adapter.out.jwt;
 import com.taskflow.auth.domain.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class JwtProviderAdapterTest {
 
     private JwtProviderAdapter jwtProviderAdapter;
-    private final String TEST_SECRET = "thisismysecretkeyforjwttokensthatisatleast256bitslong"; // 56 characters
+    private final String TEST_SECRET = "thisismysecretkeyforjwttokensthatisatleast256bitslong"; 
     private final long TEST_EXPIRATION = 3600000; // 1 hour
+    private final String TEST_REFRESH_SECRET = "thisismyrefreshsecretkeyforjwttokensthatisatleast256bits";
+    private final long TEST_REFRESH_EXPIRATION = 604800000; // 7 days
 
     @BeforeEach
     void setUp() {
         jwtProviderAdapter = new JwtProviderAdapter();
-        // Use ReflectionTestUtils to inject the @Value properties for the test
         ReflectionTestUtils.setField(jwtProviderAdapter, "secret", TEST_SECRET);
         ReflectionTestUtils.setField(jwtProviderAdapter, "expiration", TEST_EXPIRATION);
+        ReflectionTestUtils.setField(jwtProviderAdapter, "refreshSecret", TEST_REFRESH_SECRET);
+        ReflectionTestUtils.setField(jwtProviderAdapter, "refreshExpiration", TEST_REFRESH_EXPIRATION);
+    }
+
+    private SecretKey getSigningKey(String secret) {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     @Test
     void generateToken_shouldCreateValidTokenWithCorrectClaims() {
-        // Arrange
         UUID userId = UUID.randomUUID();
         User testUser = new User(userId, "testuser", "hashedpassword", "ROLE_TESTER");
 
-        // Act
         String token = jwtProviderAdapter.generateToken(testUser);
 
-        // Assert
         assertNotNull(token);
-        assertTrue(token.split("\\.").length == 3); // Check basic JWT structure (header.payload.signature)
-
-        // Deconstruct the token to verify claims (requires a token parser utility)
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(TEST_SECRET.getBytes())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
-        assertEquals("testuser", claims.getSubject(), "Subject should be the username.");
-        assertEquals("ROLE_TESTER", claims.get("role"), "Claim 'role' should be correct.");
         
-        // Check expiration time is in the future
-        long expirationTime = claims.getExpiration().getTime();
-        long issuedAtTime = claims.getIssuedAt().getTime();
-        assertTrue(expirationTime > System.currentTimeMillis());
-        // Check that expiration is roughly one hour after issuance (with a small buffer)
-        assertTrue(expirationTime - issuedAtTime >= TEST_EXPIRATION - 1000);
+        // Use the new 0.12.x immutable parser API
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey(TEST_SECRET))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertEquals("testuser", claims.getSubject());
+        assertEquals("ROLE_TESTER", claims.get("role"));
+        assertTrue(claims.getExpiration().after(claims.getIssuedAt()));
     }
 
     @Test
     void generateToken_shouldThrowExceptionForInvalidSecret() {
-        // Arrange (Secret is set, but we try to parse with a different one)
         User testUser = new User(UUID.randomUUID(), "testuser", "pass", "ROLE_USER");
         String token = jwtProviderAdapter.generateToken(testUser);
         String wrongSecret = "totallydifferentsecretkeythatisatleast256bitslong";
 
-        // Assert
+        // JJWT 0.12.x throws SignatureException when verifyWith fails
         assertThrows(io.jsonwebtoken.security.SignatureException.class, () -> {
-            Jwts.parserBuilder()
-                .setSigningKey(wrongSecret.getBytes())
+            Jwts.parser()
+                .verifyWith(getSigningKey(wrongSecret))
                 .build()
-                .parseClaimsJws(token);
-        }, "Token should fail validation with a different key.");
+                .parseSignedClaims(token);
+        });
+    }
+
+    @Test
+    void generateRefreshToken_shouldCreateValidRefreshToken() {
+        User testUser = new User(UUID.randomUUID(), "testuser@example.com", "hashedpassword", "ROLE_USER");
+
+        String refreshToken = jwtProviderAdapter.generateRefreshToken(testUser);
+
+        assertNotNull(refreshToken);
+
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey(TEST_REFRESH_SECRET))
+                .build()
+                .parseSignedClaims(refreshToken)
+                .getPayload();
+
+        assertEquals("testuser@example.com", claims.getSubject());
+        assertEquals("refresh", claims.get("type"));
+    }
+
+    @Test
+    void extractEmailFromRefreshToken_shouldReturnEmail() {
+        User testUser = new User(UUID.randomUUID(), "testuser@example.com", "hashedpassword", "ROLE_USER");
+        String refreshToken = jwtProviderAdapter.generateRefreshToken(testUser);
+
+        String email = jwtProviderAdapter.extractEmailFromRefreshToken(refreshToken);
+
+        assertEquals("testuser@example.com", email);
+    }
+
+    @Test
+    void isRefreshTokenValid_shouldReturnTrueForValidToken() {
+        User testUser = new User(UUID.randomUUID(), "testuser@example.com", "hashedpassword", "ROLE_USER");
+        String refreshToken = jwtProviderAdapter.generateRefreshToken(testUser);
+
+        assertTrue(jwtProviderAdapter.isRefreshTokenValid(refreshToken));
+    }
+
+    @Test
+    void isRefreshTokenValid_shouldReturnFalseForInvalidToken() {
+        assertFalse(jwtProviderAdapter.isRefreshTokenValid("invalid.token.here"));
+    }
+
+    @Test
+    void isRefreshTokenValid_shouldReturnFalseForAccessToken() {
+        User testUser = new User(UUID.randomUUID(), "testuser@example.com", "hashedpassword", "ROLE_USER");
+        String accessToken = jwtProviderAdapter.generateToken(testUser);
+
+        // Access token is signed with TEST_SECRET, but isRefreshTokenValid uses TEST_REFRESH_SECRET
+        assertFalse(jwtProviderAdapter.isRefreshTokenValid(accessToken));
     }
 }

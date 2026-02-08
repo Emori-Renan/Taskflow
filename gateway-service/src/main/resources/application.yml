@@ -7,17 +7,14 @@ spring:
 
   cloud:
     gateway:
-      default-filters:
-        - name: RequestRateLimiter
-          args:
-            redis-rate-limiter.replenishRate: 5
-            redis-rate-limiter.burstCapacity: 10
-            key-resolver: "#{@ipKeyResolver}"
-      routes:
-        - id: auth-service
-          uri: http://auth-service:8081
-          predicates:
-            - Path=/api/auth/**
+      server:
+        webflux:
+          default-filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenish-rate: 5
+                redis-rate-limiter.burst-capacity: 10
+                key-resolver: "#{@ipKeyResolver}"
 
   data:
     redis:

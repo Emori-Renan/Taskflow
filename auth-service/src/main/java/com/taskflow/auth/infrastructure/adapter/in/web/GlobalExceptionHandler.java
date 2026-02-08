@@ -2,6 +2,7 @@ package com.taskflow.auth.infrastructure.adapter.in.web;
 
 import com.taskflow.auth.domain.exception.InvalidCredentialsException;
 import com.taskflow.auth.domain.exception.InvalidInputException;
+import com.taskflow.auth.domain.exception.InvalidTokenException;
 import com.taskflow.auth.domain.exception.UserAlreadyExistsException;
 import com.taskflow.auth.domain.exception.UserNotFoundException;
 import org.slf4j.Logger;
@@ -32,6 +33,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleConflict(UserAlreadyExistsException ex) {
         return new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorResponse handleInvalidToken(InvalidTokenException ex) {
+        return new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage());
     }
 
     @ExceptionHandler(InvalidInputException.class)

@@ -26,7 +26,6 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-    // This must match the secret configured in the auth-service (application.yml)
     @Value("${jwt.secret}")
     private String secret;
 
@@ -44,11 +43,6 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getPath().toString();
 
         if (isPublicPath.test(path)) {
-            return chain.filter(exchange);
-        }
-
-        // 1. Allow public access to all /api/auth paths (login/register) 
-        if (path.startsWith("/api/auth")) {
             return chain.filter(exchange);
         }
 

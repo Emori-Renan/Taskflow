@@ -1,25 +1,27 @@
 package com.taskflow.auth.infrastructure.adapter.out.db;
 
 import com.taskflow.auth.domain.model.User;
+import com.taskflow.auth.infrastructure.adapter.out.db.entity.UserEntity;
 import com.taskflow.auth.infrastructure.adapter.out.db.repository.SpringDataUserRepository;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
-import reactor.test.StepVerifier;
 
+import jakarta.persistence.PersistenceException;
+
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @ActiveProfiles("test")
-@DataR2dbcTest
+@DataJpaTest
 @Import({ UserRepositoryAdapter.class, BCryptPasswordEncoder.class })
 class UserRepositoryAdapterIntegrationTest {
 
@@ -33,25 +35,16 @@ class UserRepositoryAdapterIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private DatabaseClient databaseClient;
+    private TestEntityManager entityManager;
 
     private UUID insertTestUser(String email, String rawPassword, String role) {
-        UUID id = UUID.randomUUID();
         String hashed = passwordEncoder.encode(rawPassword);
+        UserEntity entity = new UserEntity(null, email, hashed, role);
 
-        databaseClient.sql("""
-            INSERT INTO users (id, email, password, role)
-            VALUES (:id, :email, :password, :role)
-        """)
-        .bind("id", id)
-        .bind("email", email)
-        .bind("password", hashed)
-        .bind("role", role)
-        .fetch()
-        .rowsUpdated()
-        .block();
+        entityManager.persist(entity);
+        entityManager.flush();
 
-        return id;
+        return entity.getId();
     }
 
     @Test
@@ -63,47 +56,44 @@ class UserRepositoryAdapterIntegrationTest {
                 "ROLE_MEMBER"
         );
 
-        StepVerifier.create(userRepositoryAdapter.save(rawUser))
-                .assertNext(savedUser -> {
-                    assertNotNull(savedUser.id(), "User ID should be generated.");
-                    assertEquals("newuser@example.com", savedUser.email());
-                    assertEquals("ROLE_MEMBER", savedUser.role());
-                })
-                .verifyComplete();
+        User savedUser = userRepositoryAdapter.save(rawUser);
 
-        StepVerifier.create(springDataRepository.findByEmail("newuser@example.com"))
-                .assertNext(entity ->
-                        assertTrue(
-                                passwordEncoder.matches("rawPassword123", entity.getPassword()),
-                                "Password must be hashed in DB."
-                        )
-                )
-                .verifyComplete();
+        assertNotNull(savedUser.id(), "User ID should be generated.");
+        assertEquals("newuser@example.com", savedUser.email());
+        assertEquals("ROLE_MEMBER", savedUser.role());
+
+        // Verify password is hashed in DB
+        Optional<UserEntity> entity = springDataRepository.findByEmail("newuser@example.com");
+        assertTrue(entity.isPresent());
+        assertTrue(
+                passwordEncoder.matches("rawPassword123", entity.get().getPassword()),
+                "Password must be hashed in DB."
+        );
     }
 
     @Test
     void findByEmail_shouldReturnDomainModelIfFound() {
         insertTestUser("existinguser@example.com", "testpass", "ROLE_ADMIN");
 
-        StepVerifier.create(userRepositoryAdapter.findByEmail("existinguser@example.com"))
-                .assertNext(user -> {
-                    assertNotNull(user.id());
-                    assertEquals("existinguser@example.com", user.email());
-                    assertEquals("ROLE_ADMIN", user.role());
-                    assertTrue(passwordEncoder.matches("testpass", user.password()));
-                })
-                .verifyComplete();
+        Optional<User> user = userRepositoryAdapter.findByEmail("existinguser@example.com");
+
+        assertTrue(user.isPresent());
+        assertNotNull(user.get().id());
+        assertEquals("existinguser@example.com", user.get().email());
+        assertEquals("ROLE_ADMIN", user.get().role());
+        assertTrue(passwordEncoder.matches("testpass", user.get().password()));
     }
 
     @Test
-    void findByEmail_shouldCompleteEmptyIfNotFound() {
-        StepVerifier.create(userRepositoryAdapter.findByEmail("nonexistent@example.com"))
-                .verifyComplete();
+    void findByEmail_shouldReturnEmptyOptionalIfNotFound() {
+        Optional<User> user = userRepositoryAdapter.findByEmail("nonexistent@example.com");
+        assertFalse(user.isPresent());
     }
 
     @Test
     void save_shouldFailOnDuplicateEmail() {
         insertTestUser("dupe@example.com", "secret", "ROLE_USER");
+        entityManager.clear(); // Clear persistence context to ensure constraint is checked
 
         User duplicate = new User(
                 UUID.randomUUID(),
@@ -112,9 +102,12 @@ class UserRepositoryAdapterIntegrationTest {
                 "ROLE_USER"
         );
 
-        StepVerifier.create(userRepositoryAdapter.save(duplicate))
-                .expectError(DataIntegrityViolationException.class)
-                .verify();
+        // Expect PersistenceException (parent of Hibernate's ConstraintViolationException)
+        assertThrows(PersistenceException.class,
+                () -> {
+                    userRepositoryAdapter.save(duplicate);
+                    entityManager.flush(); // Force flush to trigger constraint violation
+                });
     }
 
     @Test
@@ -126,8 +119,7 @@ class UserRepositoryAdapterIntegrationTest {
                 "ROLE_USER"
         );
 
-        StepVerifier.create(userRepositoryAdapter.save(invalidUser))
-                .expectError(IllegalArgumentException.class)
-                .verify();
+        assertThrows(IllegalArgumentException.class,
+                () -> userRepositoryAdapter.save(invalidUser));
     }
 }

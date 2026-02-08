@@ -1,3 +1,3 @@
 package com.taskflow.auth.application.dto;
 
-public record AuthResponseDTO(String token, String email, String role) {}
+public record AuthResponseDTO(String accessToken, String refreshToken, String email, String role) {}

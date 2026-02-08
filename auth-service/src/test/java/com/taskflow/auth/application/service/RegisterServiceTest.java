@@ -1,6 +1,7 @@
 package com.taskflow.auth.application.service;
 
 import com.taskflow.auth.application.dto.AuthRequestDTO;
+import com.taskflow.auth.application.port.out.RefreshTokenStoragePort;
 import com.taskflow.auth.application.port.out.TokenProviderPort;
 import com.taskflow.auth.application.port.out.UserRepositoryPort;
 import com.taskflow.auth.domain.exception.InvalidInputException;
@@ -15,15 +16,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
-
+import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +38,9 @@ class RegisterServiceTest {
         @Mock
         private PasswordEncoder passwordEncoder;
 
+        @Mock
+        private RefreshTokenStoragePort refreshTokenStorage;
+
         @InjectMocks
         private RegisterService registerService;
 
@@ -45,10 +48,12 @@ class RegisterServiceTest {
 
         private static final String RAW_PASSWORD = "TestPassword123";
         private static final String MOCK_TOKEN = "mocked.jwt.token";
+        private static final String MOCK_REFRESH_TOKEN = "mocked.jwt.refresh.token";
 
         @BeforeEach
         void setUp() {
                 validRequest = new AuthRequestDTO("newuser@example.com", RAW_PASSWORD);
+                ReflectionTestUtils.setField(registerService, "refreshExpiration", 604800000L);
         }
 
         @Test
@@ -60,30 +65,32 @@ class RegisterServiceTest {
                                 "USER");
 
                 when(userRepository.findByEmail("newuser@example.com"))
-                                .thenReturn(Mono.empty());
+                                .thenReturn(Optional.empty());
 
                 when(userRepository.save(any(User.class)))
-                                .thenReturn(Mono.just(savedUser));
+                                .thenReturn(savedUser);
 
                 when(tokenProvider.generateToken(savedUser))
                                 .thenReturn(MOCK_TOKEN);
 
-                when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn("hashedPassword");
+                when(tokenProvider.generateRefreshToken(savedUser))
+                                .thenReturn(MOCK_REFRESH_TOKEN);
 
-                StepVerifier.create(registerService.register(validRequest))
-                                .assertNext(response -> {
-                                        assertEquals(MOCK_TOKEN, response.token());
-                                        assertEquals("newuser@example.com", response.email());
-                                        assertEquals("USER", response.role());
-                                })
-                                .verifyComplete();
+                var response = registerService.register(validRequest);
+
+                assertEquals(MOCK_TOKEN, response.accessToken());
+                assertEquals(MOCK_REFRESH_TOKEN, response.refreshToken());
+                assertEquals("newuser@example.com", response.email());
+                assertEquals("USER", response.role());
 
                 verify(userRepository).save(any(User.class));
                 verify(tokenProvider).generateToken(savedUser);
+                verify(tokenProvider).generateRefreshToken(savedUser);
+                verify(refreshTokenStorage).store(eq("newuser@example.com"), eq(MOCK_REFRESH_TOKEN), eq(604800000L));
         }
 
         @Test
-        void register_shouldError_whenUserAlreadyExists() {
+        void register_shouldThrowException_whenUserAlreadyExists() {
                 User existingUser = new User(
                                 UUID.randomUUID(),
                                 "newuser@example.com",
@@ -91,34 +98,31 @@ class RegisterServiceTest {
                                 "USER");
 
                 when(userRepository.findByEmail("newuser@example.com"))
-                                .thenReturn(Mono.just(existingUser));
+                                .thenReturn(Optional.of(existingUser));
 
-                StepVerifier.create(registerService.register(validRequest))
-                                .expectError(UserAlreadyExistsException.class)
-                                .verify();
+                assertThrows(UserAlreadyExistsException.class,
+                                () -> registerService.register(validRequest));
 
                 verify(userRepository, never()).save(any());
                 verify(tokenProvider, never()).generateToken(any());
         }
 
         @Test
-        void register_shouldError_whenEmailIsBlank() {
+        void register_shouldThrowException_whenEmailIsBlank() {
                 AuthRequestDTO request = new AuthRequestDTO(" ", RAW_PASSWORD);
 
-                StepVerifier.create(registerService.register(request))
-                                .expectError(InvalidInputException.class)
-                                .verify();
+                assertThrows(InvalidInputException.class,
+                                () -> registerService.register(request));
 
                 verifyNoInteractions(userRepository);
         }
 
         @Test
-        void register_shouldError_whenPasswordIsNull() {
+        void register_shouldThrowException_whenPasswordIsNull() {
                 AuthRequestDTO request = new AuthRequestDTO("validuser@example.com", null);
 
-                StepVerifier.create(registerService.register(request))
-                                .expectError(InvalidInputException.class)
-                                .verify();
+                assertThrows(InvalidInputException.class,
+                                () -> registerService.register(request));
 
                 verifyNoInteractions(userRepository);
         }

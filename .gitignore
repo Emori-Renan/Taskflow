@@ -63,3 +63,11 @@ Thumbs.db
 # Maven Wrapper binaries
 .mvn/wrapper/maven-wrapper.jar
 user-service/src/main/resources/logback-spring.xml
+
+# ---------------------------------------------------
+# 6. AI Context Files
+# ---------------------------------------------------
+# Ignores CLAUDE.md in the root and all subdirectories
+CLAUDE.md
+.claudeignore
+.claude

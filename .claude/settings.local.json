@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn clean install:*)",
+      "Bash(mvn test:*)",
+      "Bash(ls:*)",
+      "Bash(docker compose:*)"
+    ]
+  }
+}
