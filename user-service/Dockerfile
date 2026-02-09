@@ -14,15 +14,21 @@ COPY src ./src
 # Build the application
 RUN mvn -B clean package -DskipTests
 
+# -------- EXTRACT LAYERS --------
+FROM eclipse-temurin:23-jre-alpine AS extract
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
+
 # -------- RUNTIME STAGE --------
 FROM eclipse-temurin:23-jre-alpine
 WORKDIR /app
 
-# Copy the built JAR from the build stage
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=extract /app/extracted/dependencies/ ./
+COPY --from=extract /app/extracted/spring-boot-loader/ ./
+COPY --from=extract /app/extracted/snapshot-dependencies/ ./
+COPY --from=extract /app/extracted/application/ ./
 
-# Expose the port used by user-service
 EXPOSE 8082
 
-# Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -76,3 +76,4 @@ CLAUDE.md
 # 7. Environment / Secrets
 # ---------------------------------------------------
 .env
+.claude/settings.local.json

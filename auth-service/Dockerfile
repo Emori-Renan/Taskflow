@@ -26,13 +26,23 @@ RUN mvn -B clean package -DskipTests
 
 
 # ============================================
-# Stage 3: Runtime
+# Stage 3: Extract Layers
+# ============================================
+FROM eclipse-temurin:23-jre-alpine AS extract
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
+
+# ============================================
+# Stage 4: Runtime
 # ============================================
 FROM eclipse-temurin:23-jre-alpine
 WORKDIR /app
 ENV TZ=Asia/Tokyo
 
-# Copy the built JAR from the build stage
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=extract /app/extracted/dependencies/ ./
+COPY --from=extract /app/extracted/spring-boot-loader/ ./
+COPY --from=extract /app/extracted/snapshot-dependencies/ ./
+COPY --from=extract /app/extracted/application/ ./
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
