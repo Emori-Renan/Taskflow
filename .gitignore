@@ -71,3 +71,8 @@ user-service/src/main/resources/logback-spring.xml
 CLAUDE.md
 .claudeignore
 .claude
+
+# ---------------------------------------------------
+# 7. Environment / Secrets
+# ---------------------------------------------------
+.env
