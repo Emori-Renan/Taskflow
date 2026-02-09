@@ -3,13 +3,14 @@ package com.taskflow.auth.infrastructure.adapter.out.jwt;
 import com.taskflow.auth.domain.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,9 +18,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class JwtProviderAdapterTest {
 
     private JwtProviderAdapter jwtProviderAdapter;
-    private final String TEST_SECRET = "thisismysecretkeyforjwttokensthatisatleast256bitslong"; 
+    private final String TEST_SECRET = Base64.getEncoder().encodeToString(
+            "thisismysecretkeyforjwttokensthatisatleast256bitslong".getBytes());
     private final long TEST_EXPIRATION = 3600000; // 1 hour
-    private final String TEST_REFRESH_SECRET = "thisismyrefreshsecretkeyforjwttokensthatisatleast256bits";
+    private final String TEST_REFRESH_SECRET = Base64.getEncoder().encodeToString(
+            "thisismyrefreshsecretkeyforjwttokensthatisatleast256bits".getBytes());
     private final long TEST_REFRESH_EXPIRATION = 604800000; // 7 days
 
     @BeforeEach
@@ -32,7 +35,8 @@ class JwtProviderAdapterTest {
     }
 
     private SecretKey getSigningKey(String secret) {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        byte[] keyBytes = Decoders.BASE64.decode(secret);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     @Test
@@ -43,8 +47,7 @@ class JwtProviderAdapterTest {
         String token = jwtProviderAdapter.generateToken(testUser);
 
         assertNotNull(token);
-        
-        // Use the new 0.12.x immutable parser API
+
         Claims claims = Jwts.parser()
                 .verifyWith(getSigningKey(TEST_SECRET))
                 .build()
@@ -60,9 +63,9 @@ class JwtProviderAdapterTest {
     void generateToken_shouldThrowExceptionForInvalidSecret() {
         User testUser = new User(UUID.randomUUID(), "testuser", "pass", "ROLE_USER");
         String token = jwtProviderAdapter.generateToken(testUser);
-        String wrongSecret = "totallydifferentsecretkeythatisatleast256bitslong";
+        String wrongSecret = Base64.getEncoder().encodeToString(
+                "totallydifferentsecretkeythatisatleast256bitslong".getBytes());
 
-        // JJWT 0.12.x throws SignatureException when verifyWith fails
         assertThrows(io.jsonwebtoken.security.SignatureException.class, () -> {
             Jwts.parser()
                 .verifyWith(getSigningKey(wrongSecret))
