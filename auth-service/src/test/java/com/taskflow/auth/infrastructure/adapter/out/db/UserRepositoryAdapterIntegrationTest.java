@@ -59,8 +59,8 @@ class UserRepositoryAdapterIntegrationTest {
     private TestEntityManager entityManager;
 
     private UUID insertTestUser(String email, String rawPassword, String role) {
-        String hashed = passwordEncoder.encode(rawPassword);
-        UserEntity entity = new UserEntity(null, email, hashed, role);
+        String hashed = rawPassword != null ? passwordEncoder.encode(rawPassword) : null;
+        UserEntity entity = new UserEntity(null, email, hashed, role, null);
 
         entityManager.persist(entity);
         entityManager.flush();
@@ -142,5 +142,46 @@ class UserRepositoryAdapterIntegrationTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> userRepositoryAdapter.save(invalidUser));
+    }
+
+    @Test
+    void save_shouldPersistOAuthUserWithNullPassword() {
+        User oauthUser = User.ofOAuth("oauth@example.com", "USER", "GOOGLE");
+
+        User savedUser = userRepositoryAdapter.save(oauthUser);
+
+        assertNotNull(savedUser.id());
+        assertEquals("oauth@example.com", savedUser.email());
+        assertNull(savedUser.password());
+        assertEquals("USER", savedUser.role());
+        assertEquals("GOOGLE", savedUser.oauthProvider());
+    }
+
+    @Test
+    void save_shouldPersistOauthProviderField() {
+        User user = new User(null, "provider@example.com", "password123", "USER", "GOOGLE");
+
+        User savedUser = userRepositoryAdapter.save(user);
+
+        assertNotNull(savedUser.id());
+        assertEquals("GOOGLE", savedUser.oauthProvider());
+
+        Optional<UserEntity> entity = springDataRepository.findByEmail("provider@example.com");
+        assertTrue(entity.isPresent());
+        assertEquals("GOOGLE", entity.get().getOauthProvider());
+    }
+
+    @Test
+    void update_shouldUpdateOauthProvider() {
+        UUID userId = insertTestUser("update@example.com", "password", "USER");
+
+        User userToUpdate = new User(userId, "update@example.com", null, "USER", "GOOGLE");
+
+        User updatedUser = userRepositoryAdapter.update(userToUpdate);
+
+        assertEquals(userId, updatedUser.id());
+        assertEquals("GOOGLE", updatedUser.oauthProvider());
+        // Password should remain unchanged (not re-encoded since we passed null)
+        assertTrue(passwordEncoder.matches("password", updatedUser.password()));
     }
 }

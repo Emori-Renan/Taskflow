@@ -67,6 +67,21 @@ jwt:
   refresh-secret: ${JWT_REFRESH_SECRET}
   refresh-expiration: 604800000
 
+spring.cloud.aws:
+  region:
+    static: us-east-1
+  credentials:
+    access-key: ${AWS_ACCESS_KEY:test}
+    secret-key: ${AWS_SECRET_KEY:test}
+  sqs:
+    endpoint: ${AWS_SQS_ENDPOINT:http://localstack:4566}
+
+oauth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET}
+    redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/auth/oauth/google/callback}
+
 springdoc:
   api-docs:
     enabled: true

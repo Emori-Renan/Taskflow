@@ -1,17 +1,21 @@
 package com.taskflow.user.shared.security;
 
-
 import java.util.UUID;
-import org.springframework.security.oauth2.jwt.Jwt;
+
 import org.springframework.stereotype.Component;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Component
 public class JwtUserContext {
 
     public UUID userId() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        var jwt = (Jwt) auth.getPrincipal();
-        return UUID.fromString(jwt.getSubject());
+        ServletRequestAttributes attrs =
+            (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+        String userId = attrs.getRequest().getHeader("X-User-Id");
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalStateException("X-User-Id header is missing");
+        }
+        return UUID.fromString(userId);
     }
 }

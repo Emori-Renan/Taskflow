@@ -33,16 +33,32 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
             throw new IllegalArgumentException("Email must not be null or blank");
         }
 
-        // Hash password if not already hashed
-        String hashedPassword = passwordEncoder.encode(user.password());
+        String hashedPassword = user.password() != null ? passwordEncoder.encode(user.password()) : null;
 
-        // Set ID to null to let JPA generate it (for new entities)
         UserEntity entity = new UserEntity(
             null,
             user.email(),
             hashedPassword,
-            user.role()
+            user.role(),
+            user.oauthProvider()
         );
+
+        UserEntity saved = repository.save(entity);
+        return toDomainModel(saved);
+    }
+
+    @Override
+    public User update(User user) {
+        UserEntity entity = repository.findById(user.id())
+                .orElseThrow(() -> new IllegalArgumentException("User not found for update: " + user.id()));
+
+        entity.setEmail(user.email());
+        entity.setRole(user.role());
+        entity.setOauthProvider(user.oauthProvider());
+
+        if (user.password() != null) {
+            entity.setPassword(passwordEncoder.encode(user.password()));
+        }
 
         UserEntity saved = repository.save(entity);
         return toDomainModel(saved);
@@ -53,7 +69,8 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
             entity.getId(),
             entity.getEmail(),
             entity.getPassword(),
-            entity.getRole()
+            entity.getRole(),
+            entity.getOauthProvider()
         );
     }
 

@@ -1,9 +1,11 @@
 package com.taskflow.auth.application.service;
 
 import com.taskflow.auth.application.dto.AuthRequestDTO;
+import com.taskflow.auth.application.port.out.EventPublisherPort;
 import com.taskflow.auth.application.port.out.RefreshTokenStoragePort;
 import com.taskflow.auth.application.port.out.TokenProviderPort;
 import com.taskflow.auth.application.port.out.UserRepositoryPort;
+import com.taskflow.auth.domain.event.UserCreatedEvent;
 import com.taskflow.auth.domain.exception.InvalidInputException;
 import com.taskflow.auth.domain.exception.UserAlreadyExistsException;
 import com.taskflow.auth.domain.model.User;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,6 +45,9 @@ class RegisterServiceTest {
         @Mock
         private RefreshTokenStoragePort refreshTokenStorage;
 
+        @Mock
+        private EventPublisherPort eventPublisher;
+
         private MeterRegistry meterRegistry;
         private RegisterService registerService;
 
@@ -55,15 +61,16 @@ class RegisterServiceTest {
         void setUp() {
                 meterRegistry = new SimpleMeterRegistry();
                 registerService = new RegisterService(userRepository, tokenProvider, passwordEncoder,
-                        refreshTokenStorage, meterRegistry);
+                        refreshTokenStorage, eventPublisher, meterRegistry);
                 validRequest = new AuthRequestDTO("newuser@example.com", RAW_PASSWORD);
                 ReflectionTestUtils.setField(registerService, "refreshExpiration", 604800000L);
         }
 
         @Test
         void register_shouldCreateUserAndReturnAuthResponse_whenUserDoesNotExist() {
+                UUID userId = UUID.randomUUID();
                 User savedUser = new User(
-                                UUID.randomUUID(),
+                                userId,
                                 "newuser@example.com",
                                 "hashedPassword",
                                 "USER");
@@ -91,6 +98,11 @@ class RegisterServiceTest {
                 verify(tokenProvider).generateToken(savedUser);
                 verify(tokenProvider).generateRefreshToken(savedUser);
                 verify(refreshTokenStorage).store(eq("newuser@example.com"), eq(MOCK_REFRESH_TOKEN), eq(604800000L));
+
+                ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
+                verify(eventPublisher).publish(eventCaptor.capture());
+                assertEquals(userId, eventCaptor.getValue().userId());
+                assertEquals("newuser@example.com", eventCaptor.getValue().email());
         }
 
         @Test
@@ -109,6 +121,7 @@ class RegisterServiceTest {
 
                 verify(userRepository, never()).save(any());
                 verify(tokenProvider, never()).generateToken(any());
+                verify(eventPublisher, never()).publish(any());
         }
 
         @Test
@@ -119,6 +132,7 @@ class RegisterServiceTest {
                                 () -> registerService.register(request));
 
                 verifyNoInteractions(userRepository);
+                verifyNoInteractions(eventPublisher);
         }
 
         @Test
@@ -129,5 +143,6 @@ class RegisterServiceTest {
                                 () -> registerService.register(request));
 
                 verifyNoInteractions(userRepository);
+                verifyNoInteractions(eventPublisher);
         }
 }

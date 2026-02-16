@@ -6,13 +6,15 @@ import java.util.UUID;
 public record UserProfileResponse(
     UUID id,
     String email,
-    String displayName
+    String displayName,
+    String avatarUrl
 ) {
     public static UserProfileResponse from(UserProfile profile) {
         return new UserProfileResponse(
             profile.getUserId(),
             profile.getEmail(),
-            profile.getDisplayName()
+            profile.getDisplayName(),
+            profile.getAvatarUrl()
         );
     }
 }

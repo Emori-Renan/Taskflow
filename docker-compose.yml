@@ -36,20 +36,31 @@ services:
     # NOTE: Application port should match your container port setup (8081 in this case)
     ports:
       - "8081:8081"
+      - "5005:5005"
     environment:
+      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/auth/oauth/google/callback}
       - spring.datasource.url=jdbc:postgresql://postgres:5432/authdb
       - spring.datasource.username=taskflow
       - spring.datasource.password=taskflow
+      - spring.cloud.aws.sqs.endpoint=http://localstack:4566
+      - spring.cloud.aws.credentials.access-key=test
+      - spring.cloud.aws.credentials.secret-key=test
+      - spring.cloud.aws.region.static=us-east-1
 
       # Recommended replacement for old 'SPRING_JPA_HIBERNATE_DDL_AUTO' for schema initialization
-      - spring.sql.init.mode=always 
+      - spring.sql.init.mode=always
 
     # Use the healthcheck from the postgres service to guarantee DB readiness
     depends_on:
       postgres:
-        condition: service_healthy 
+        condition: service_healthy
+      localstack:
+        condition: service_started 
       
     networks:
       - taskflow-net
@@ -65,55 +76,54 @@ services:
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - auth-service
+      - user-service
       - redis
     networks:
       - taskflow-net
 
-  # user-service:
-  #   build:
-  #     context: ./user-service
-  #     dockerfile: Dockerfile
-  #   container_name: user-service
-  #   ports:
-  #     - "8082:8082"
-  #   environment:
-  #     - server.port=8082
-  #     - spring.r2dbc.url=r2dbc:postgresql://user-postgres:5432/userdb
-  #     - spring.r2dbc.username=taskflow
-  #     - spring.r2dbc.password=taskflow
-  #     - spring.sql.init.mode=always
-  #     - aws.sqs.user-created-queue=user-created-queue
-  #     - spring.cloud.aws.region.static=us-east-1
-  #     - spring.cloud.aws.credentials.access-key=test
-  #     - spring.cloud.aws.credentials.secret-key=test
-  #     - spring.cloud.aws.endpoint.sqs=http://localstack:4566
-  #   depends_on:
-  #     localstack:
-  #       condition: service_started
-  #     user-postgres:
-  #       condition: service_healthy
-  #   networks:
-  #     - taskflow-net
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8082:8082"
+    environment:
+      - spring.datasource.url=jdbc:postgresql://user-postgres:5432/userdb
+      - spring.datasource.username=taskflow
+      - spring.datasource.password=taskflow
+      - spring.sql.init.mode=always
+      - spring.cloud.aws.sqs.endpoint=http://localstack:4566
+      - spring.cloud.aws.credentials.access-key=test
+      - spring.cloud.aws.credentials.secret-key=test
+      - spring.cloud.aws.region.static=us-east-1
+    depends_on:
+      localstack:
+        condition: service_started
+      user-postgres:
+        condition: service_healthy
+    networks:
+      - taskflow-net
 
-  # user-postgres:
-  #   image: postgres:15
-  #   container_name: user-postgres
-  #   environment:
-  #     POSTGRES_USER: taskflow
-  #     POSTGRES_PASSWORD: taskflow
-  #     POSTGRES_DB: userdb
-  #     POSTGRES_HOST_AUTH_METHOD: trust
-  #   ports:
-  #     - "5434:5432"
-  #   volumes:
-  #     - userpgdata:/var/lib/postgresql/data
-  #   networks:
-  #     - taskflow-net
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U taskflow -d userdb"]
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 5
+  user-postgres:
+    image: postgres:15
+    container_name: user-postgres
+    environment:
+      POSTGRES_USER: taskflow
+      POSTGRES_PASSWORD: taskflow
+      POSTGRES_DB: userdb
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5434:5432"
+    volumes:
+      - userpgdata:/var/lib/postgresql/data
+    networks:
+      - taskflow-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow -d userdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   localstack:
     image: localstack/localstack:3.0

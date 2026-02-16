@@ -1,5 +1,4 @@
 package com.taskflow.user.application.dto;
 
-public class UpdateUserProfileRequest {
-
+public record UpdateUserProfileRequest(String displayName, String avatarUrl) {
 }

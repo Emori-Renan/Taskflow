@@ -1,7 +1,9 @@
 package com.taskflow.gateway.config;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,13 +13,13 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -57,18 +59,23 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         // 3. Validate Token
         String token = authHeader.substring(7);
         try {
-            // Ensure the secret is loaded using the same character set as the auth service
-            SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+            SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
 
-            Jwts.parser()
+            Claims claims = Jwts.parser()
                     .verifyWith(key)
                     .build()
-                    .parseSignedClaims(token);
+                    .parseSignedClaims(token)
+                    .getPayload();
 
-            // Token is valid, continue the chain
-            return chain.filter(exchange);
+            // Forward claims as headers to downstream services
+            ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                    .header("X-User-Email", claims.getSubject())
+                    .header("X-User-Id", claims.get("userId", String.class))
+                    .header("X-User-Role", claims.get("role", String.class))
+                    .build();
+
+            return chain.filter(exchange.mutate().request(mutatedRequest).build());
         } catch (JwtException e) {
-            // Log the failure non-blockingly
             log.error("JWT Validation Failed for path {}: {}", path, e.getMessage());
             return unauthorized(exchange);
         }

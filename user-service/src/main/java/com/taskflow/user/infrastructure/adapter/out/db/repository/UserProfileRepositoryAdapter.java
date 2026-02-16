@@ -1,5 +1,6 @@
 package com.taskflow.user.infrastructure.adapter.out.db.repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
@@ -9,7 +10,6 @@ import com.taskflow.user.domain.model.UserProfile;
 import com.taskflow.user.infrastructure.adapter.out.db.entity.UserProfileEntity;
 
 import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
@@ -18,19 +18,26 @@ public class UserProfileRepositoryAdapter implements UserProfileRepositoryPort {
     private final SpringDataUserProfileRepository repository;
 
     @Override
-    public Mono<UserProfile> findById(UUID id) {
+    public Optional<UserProfile> findById(UUID id) {
         return repository.findById(id)
-            .map(e -> new UserProfile(e.getId(), e.getEmail(), e.getDisplayName()));
+            .map(this::toDomain);
     }
 
     @Override
-    public Mono<UserProfile> save(UserProfile profile) {
-        return repository.save(
-            new UserProfileEntity(
-                profile.getUserId(), 
-                profile.getEmail(), 
-                profile.getDisplayName()
-            )
-        ).map(e -> profile);
+    public UserProfile save(UserProfile profile) {
+        UserProfileEntity entity = new UserProfileEntity(
+            profile.getUserId(),
+            profile.getEmail(),
+            profile.getDisplayName(),
+            profile.getAvatarUrl()
+        );
+        UserProfileEntity saved = repository.save(entity);
+        return toDomain(saved);
+    }
+
+    private UserProfile toDomain(UserProfileEntity entity) {
+        UserProfile profile = new UserProfile(entity.getId(), entity.getEmail(), entity.getDisplayName());
+        profile.updateProfile(entity.getDisplayName(), entity.getAvatarUrl());
+        return profile;
     }
 }

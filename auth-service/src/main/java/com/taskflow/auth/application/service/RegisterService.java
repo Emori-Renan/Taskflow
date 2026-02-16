@@ -9,9 +9,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.taskflow.auth.application.dto.AuthRequestDTO;
 import com.taskflow.auth.application.dto.AuthResponseDTO;
 import com.taskflow.auth.application.port.in.RegisterUseCase;
+import com.taskflow.auth.application.port.out.EventPublisherPort;
 import com.taskflow.auth.application.port.out.RefreshTokenStoragePort;
 import com.taskflow.auth.application.port.out.TokenProviderPort;
 import com.taskflow.auth.application.port.out.UserRepositoryPort;
+import com.taskflow.auth.domain.event.UserCreatedEvent;
 import com.taskflow.auth.domain.exception.InvalidInputException;
 import com.taskflow.auth.domain.exception.UserAlreadyExistsException;
 import com.taskflow.auth.domain.model.User;
@@ -23,6 +25,7 @@ public class RegisterService implements RegisterUseCase {
     private final TokenProviderPort tokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenStoragePort refreshTokenStorage;
+    private final EventPublisherPort eventPublisher;
     private final Counter registrationSuccessCounter;
     private final Counter registrationFailureCounter;
 
@@ -33,11 +36,13 @@ public class RegisterService implements RegisterUseCase {
             TokenProviderPort tokenProvider,
             PasswordEncoder passwordEncoder,
             RefreshTokenStoragePort refreshTokenStorage,
+            EventPublisherPort eventPublisher,
             MeterRegistry meterRegistry) {
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenStorage = refreshTokenStorage;
+        this.eventPublisher = eventPublisher;
         this.registrationSuccessCounter = Counter.builder("auth.registration")
                 .tag("outcome", "success")
                 .register(meterRegistry);
@@ -72,7 +77,10 @@ public class RegisterService implements RegisterUseCase {
             );
             User savedUser = userRepository.save(newUser);
 
-            // 4. Generate tokens and return response
+            // 4. Publish user created event
+            eventPublisher.publish(new UserCreatedEvent(savedUser.id(), savedUser.email()));
+
+            // 5. Generate tokens and return response
             String accessToken = tokenProvider.generateToken(savedUser);
             String refreshToken = tokenProvider.generateRefreshToken(savedUser);
             refreshTokenStorage.store(savedUser.email(), refreshToken, refreshExpiration);

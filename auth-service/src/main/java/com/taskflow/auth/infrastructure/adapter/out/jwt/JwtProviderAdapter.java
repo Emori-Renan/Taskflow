@@ -35,7 +35,8 @@ public class JwtProviderAdapter implements TokenProviderPort {
     @Override
     public String generateToken(User user) {
         return Jwts.builder()
-                .subject(user.email()) 
+                .subject(user.email())
+                .claim("userId", user.id().toString())
                 .claim("role", user.role())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))

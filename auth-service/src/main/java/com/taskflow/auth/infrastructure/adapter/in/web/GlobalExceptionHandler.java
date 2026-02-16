@@ -3,6 +3,7 @@ package com.taskflow.auth.infrastructure.adapter.in.web;
 import com.taskflow.auth.domain.exception.InvalidCredentialsException;
 import com.taskflow.auth.domain.exception.InvalidInputException;
 import com.taskflow.auth.domain.exception.InvalidTokenException;
+import com.taskflow.auth.domain.exception.OAuthException;
 import com.taskflow.auth.domain.exception.UserAlreadyExistsException;
 import com.taskflow.auth.domain.exception.UserNotFoundException;
 import org.slf4j.Logger;
@@ -45,6 +46,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleInvalidInput(InvalidInputException ex) {
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+    }
+
+    @ExceptionHandler(OAuthException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public ErrorResponse handleOAuth(OAuthException ex) {
+        return new ErrorResponse(HttpStatus.BAD_GATEWAY.value(), ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
